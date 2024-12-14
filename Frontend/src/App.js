@@ -21,6 +21,5 @@ function App() {
     </div>
   );
 }
-abcdeef
 
 export default App;
