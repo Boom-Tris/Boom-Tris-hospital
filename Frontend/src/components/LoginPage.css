@@ -1,0 +1,67 @@
+/* LoginPage.css */
+@import url('https://fonts.googleapis.com/css2?family=Itim&family=K2D:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800&family=Noto+Serif+Thai:wght@100..900&display=swap');
+body{
+    font-family: 'K2D', serif;
+}
+.container {
+    height: 100vh;
+    
+  }
+  h1 {
+    font-family: "K2D", serif;
+  }
+
+  
+  .left-section {
+    background-color: #E9F3FE; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .illustration {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  .right-section {
+    background-color: #FFFFFF;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .login-title {
+    font-family: 'K2D', serif;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+   
+  
+  }
+  
+  
+  .form-box {
+    
+    width: 80%;
+    max-width: 400px;
+  }
+  
+  .checkbox {
+    margin: 16px 0;
+  }
+  
+  .sign-in-button {
+    
+    padding: 10px 0;
+    margin-top: 16px;
+  }
+  
+  .with-background {
+    background-color: #ffffff;
+ 
+    border-radius: 8px; 
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+  }
