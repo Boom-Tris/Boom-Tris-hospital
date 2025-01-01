@@ -54,3 +54,33 @@ h1 {
   padding: 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
+/* OtpPage.css */
+
+/* สไตล์สำหรับ StyledInput */
+.otp-input {
+  width: 40px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 8px 0;
+  border-radius: 8px;
+  text-align: center;
+  color: var(--text-color, #1C2025); /* กำหนดสีข้อความ */
+  background: var(--background-color, #fff); /* กำหนดสีพื้นหลัง */
+  border: 1px solid var(--border-color, #ccc); /* กำหนดสีขอบ */
+  box-shadow: 0 2px 4px var(--box-shadow-color, rgba(0, 0, 0, 0.05)); /* กำหนดเงา */
+}
+
+.otp-input:hover {
+  border-color: #3399FF; /* สีขอบเมื่อ hover */
+}
+
+.otp-input:focus {
+  border-color: #3399FF; /* สีขอบเมื่อ focus */
+  box-shadow: 0 0 0 3px #80BFFF; /* สีของเงาเมื่อ focus */
+}
+
+.otp-input:focus-visible {
+  outline: 0;
+}
