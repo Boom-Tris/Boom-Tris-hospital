@@ -16,13 +16,13 @@ body {
     padding-top: 16px;
     font-family: "K2D", serif; 
 }
-/* เพิ่ม effect เมื่อ hover ที่ ListItem ใน Sidebar */
+
 .sidebar .menu-item:hover {
-    background-color: #222361;  /* สีพื้นหลังเมื่อ hover */
-    color: #ffffff;  /* สีข้อความเมื่อ hover */
+    background-color: #222361;  
+    color: #ffffff;  
   }
   .sidebar .menu-item:hover{
-    transition: background-color 0.3s ease; /* เพิ่มการเปลี่ยนแปลงสีอย่างนุ่มนวล */
+    transition: background-color 0.3s ease; 
   }
   
 .icon-color{
