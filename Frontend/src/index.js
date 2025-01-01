@@ -4,12 +4,12 @@ import './index.css';
 import App from './App';
 import Sidebar from './Sidebar';
 import LoginPage from './LoginPage';
-
+import OtpPage from './OtpPage';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <LoginPage />
+    <OtpPage />
   </React.StrictMode>
 );
 
