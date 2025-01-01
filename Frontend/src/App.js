@@ -15,11 +15,9 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
         >
-<<<<<<< HEAD
-          kjggyffvvgg
-=======
-          namtemkeaw
->>>>>>> 5dfcfa9dba7d0d050eedc7831cf1880d4d758fba
+
+        
+
         </a>
       </header>
     </div>
