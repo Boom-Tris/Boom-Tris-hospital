@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './components/Sideba.css';
+import './components/Sidebar.css';
 import {
   Box,
   List,
@@ -11,9 +11,13 @@ import {
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHome, faUpload, faCircleUser, faBell, faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'; // ใช้ DateCalendar แทน CalendarPicker
 
 const Sidebar = () => {
-  const [selectedMenu, setSelectedMenu] = useState('HOME');  // State สำหรับเก็บเมนูที่ถูกเลือก
+  const [selectedMenu, setSelectedMenu] = useState('HOME');  // เก็บเมนูที่ถูกเลือก
+  const [selectedDate, setSelectedDate] = useState(new Date());  // เก็บวันที่ที่เลือก
 
   const handleMenuClick = (menu) => {
     setSelectedMenu(menu);  // เปลี่ยนเมนูที่เลือก
@@ -23,7 +27,21 @@ const Sidebar = () => {
   const renderContent = () => {
     switch (selectedMenu) {
       case 'HOME':
-        return <Typography variant="body1">หน้าหลัก</Typography>;
+        return (
+          <div>
+            <Typography variant="body1" gutterBottom> 
+              หน้าหลัก
+            </Typography>
+            <LocalizationProvider dateAdapter={AdapterDateFns}  >
+              <DateCalendar
+                date={selectedDate}
+                onChange={(newDate) => setSelectedDate(newDate) }  
+                className="custom-calendar" 
+              />
+            </LocalizationProvider>
+            
+          </div>
+        );
       case 'UPLOAD':
         return <Typography variant="body1">พื้นที่สำหรับอัพโหลดไฟล์</Typography>;
       case 'PROFILE':
