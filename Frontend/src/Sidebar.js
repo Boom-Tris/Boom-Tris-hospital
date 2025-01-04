@@ -25,19 +25,22 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
     <Box sx={{ display: 'flex', height: '100vh' }}>
      
       <Box className="sidebar">
-        <Typography variant="h5" className="menu-title">
-          Menu
+        <Typography variant="h5" className="menu-title" >
+          Menu 
         </Typography>
-        <List>
+        <List >
           {['HOME', 'UPLOAD', 'PROFILE', 'NOTIFICATION', 'MESSAGE'].map((menu) => (
-            <ListItem
+            <ListItem 
               button
               key={menu}
               className={`menu-item ${selectedMenu === menu ? 'selected' : ''}`}
               onClick={() => handleMenuClick(menu)} // เปลี่ยน route
+              sx={{
+                fontFamily: '"K2D", serif', 
+              }}
             >
               <ListItemIcon>
-                <FontAwesomeIcon
+                <FontAwesomeIcon 
                   icon={
                     menu === 'HOME' ? faHome
                       : menu === 'UPLOAD' ? faUpload
@@ -50,13 +53,14 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
                 />
               </ListItemIcon>
               <ListItemText primary={menu} />
+              
             </ListItem>
           ))}
         </List>
-      </Box>
+      </Box >
 
       {/*Content */}
-      <Box className="main-content">
+      <Box className="main-content" >
         {children} {/* Render เนื้อหาจาก Routes */}
       </Box>
     </Box>
