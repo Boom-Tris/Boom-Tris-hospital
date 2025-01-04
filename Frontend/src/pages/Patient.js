@@ -2,8 +2,8 @@ import React from 'react';
 import { Typography, TextField, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Box, Button, Chip } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; // Import FontAwesome
-import { faCog } from '@fortawesome/free-solid-svg-icons'; // Import Settings Icon
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; 
+import { faCog } from '@fortawesome/free-solid-svg-icons'; 
 import '../components/Table.css';
 
 const rows = [
@@ -59,7 +59,7 @@ const Patient = () => {
               size="small"
               sx={{ width: 200 }}
             />
-            {/* Dropdown เลือก Attribute */}
+            {/* Dropdown  */}
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel id="attribute-select-label">Attribute</InputLabel>
               <Select
