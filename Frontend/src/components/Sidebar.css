@@ -10,7 +10,7 @@ body {
 .sidebar {
     width: 250px;
     background-color: #ffffff;
-   
+    font-family: "K2D", serif;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -45,8 +45,12 @@ body {
     margin-bottom: 24px;
     align-self: flex-start;
     padding-left: 48px;
-    font-family: "K2D", serif;
+    
     font-size: 1.5rem;  
+}
+.sidebar .menu-title,
+.sidebar .MuiListItemText-root {
+    font-family: "K2D", serif;  /* กำหนดฟอนต์ */
 }
 
 .list-item-divider {
@@ -65,20 +69,3 @@ body {
    
 }
 
-.main-content h4 {
-    font-family: "K2D", serif;  
-}
-.main-content p {
-    font-family: "K2D", serif;  
-}
-
-/*HOME */
-
-.custom-calendar
-{
-    background-color: #ffffff;
-  
-   border-radius: 10px;
-   
-
-}
