@@ -43,7 +43,7 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
                     menu === 'HOME' ? faHome
                       : menu === 'UPLOAD' ? faUpload
                       : menu === 'PROFILE' ? faCircleUser
-                      : menu == 'PATIENT' ? faStethoscope
+                      : menu === 'PATIENT' ? faStethoscope
                       : menu === 'NOTIFICATION' ? faBell
                       : faEnvelope
                   }
