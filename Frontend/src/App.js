@@ -10,24 +10,35 @@ import Upload from './pages/Upload';
 import Notification from './pages/Notification';
 import Profile from './pages/Profile';
 import Message from './pages/Message';
+import OtpPage from './OtpPage';
+import LoginPage from './LoginPage';
 
 function App() {
   return (
     <div className='app-background'>
       <Router>
-        {/* แสดง Sidebar  */}
-        <Sidebar>
+        <Routes>
+         
+          <Route path="/OtpPage" element={<OtpPage />} />
+          <Route path="/LoginPage" element={<LoginPage />} />
 
-          {/* Routes สำหรับเปลี่ยนเฉพาะ Main Content */}
-          <Routes>
-            <Route path="/HOME" element={<Home />} />
-            <Route path="/UPLOAD" element={<Upload />} />
-            <Route path="/PROFILE" element={<Profile />} />
-            <Route path="/NOTIFICATION" element={<Notification />} />
-            <Route path="/MESSAGE" element={<Message />} />
-            <Route path="/" element={<Home />} /> {/* หน้าเริ่มต้น */}
-          </Routes>
-        </Sidebar>
+        
+          <Route
+            path="/*"
+            element={
+              <Sidebar>
+                <Routes>
+                  <Route path="/HOME" element={<Home />} />
+                  <Route path="/UPLOAD" element={<Upload />} />
+                  <Route path="/PROFILE" element={<Profile />} />
+                  <Route path="/NOTIFICATION" element={<Notification />} />
+                  <Route path="/MESSAGE" element={<Message />} />
+                  <Route index element={<Home />} /> {/* หน้าเริ่มต้น */}
+                </Routes>
+              </Sidebar>
+            }
+          />
+        </Routes>
       </Router>
     </div>
   );
