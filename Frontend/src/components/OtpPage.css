@@ -1,15 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Itim&family=K2D:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800&family=Noto+Serif+Thai:wght@100..900&display=swap');
-body {
-  font-family: 'K2D', serif;
-}
 
 .container {
   height: 100vh;
+
 }
 
-h1 {
-  font-family: "K2D", serif;
-}
 
 .left-section {
   background-color: #E9F3FE;
@@ -24,6 +18,7 @@ h1 {
 }
 
 .right-section {
+  
   background-color: #FFFFFF;
   position: relative;
   display: flex;
@@ -31,8 +26,9 @@ h1 {
   align-items: center;
 }
 
-.otp-title {
-  font-family: 'K2D', serif;
+#otp-title {
+  font-family: 'K2D', serif  ;
+  
   position: absolute;
   top: 20px;
   left: 20px;
@@ -40,18 +36,21 @@ h1 {
 
 .form-box {
   width: 80%;
-  max-width: 600px;
+  max-width:700px;
 }
 
 .submit-button {
-  padding: 10px 0;
-  margin-top: 16px;
+  position: absolute;
+ display: flex;
+ padding: 10px 0; 
+ top: 5vh;
 }
 
 .with-background {
   background-color: #ffffff;
   border-radius: 8px;
-  padding: 20px;
+  padding: 100px;
+  
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 /* OtpPage.css */
@@ -59,7 +58,7 @@ h1 {
 /* สไตล์สำหรับ StyledInput */
 .otp-input {
   width: 40px;
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: 'K2D', sans-serif; 
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.5;
