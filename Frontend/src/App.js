@@ -12,6 +12,9 @@ import Profile from './pages/Profile';
 import Message from './pages/Message';
 import OtpPage from './pages/OtpPage';
 import LoginPage from './pages/LoginPage';
+import Patient from './pages/Patient';
+
+
 
 function App() {
   return (
@@ -21,6 +24,8 @@ function App() {
          
           <Route path="/otp" element={<OtpPage />} />
           <Route path="/login" element={<LoginPage />} />
+        
+         
 
         
           <Route
@@ -31,6 +36,7 @@ function App() {
                   <Route path="/HOME" element={<Home />} />
                   <Route path="/UPLOAD" element={<Upload />} />
                   <Route path="/PROFILE" element={<Profile />} />
+                  <Route path="/Patient" element={<Patient />} />
                   <Route path="/NOTIFICATION" element={<Notification />} />
                   <Route path="/MESSAGE" element={<Message />} />
                   <Route index element={<Home />} /> {/* หน้าเริ่มต้น */}
