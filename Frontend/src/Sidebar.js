@@ -29,7 +29,7 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
           Menu 
         </Typography>
         <List >
-          {['HOME', 'UPLOAD', 'PROFILE', 'NOTIFICATION', 'MESSAGE' ].map((menu) => (
+          {['HOME', 'UPLOAD', 'PROFILE','PATIENT', 'NOTIFICATION', 'MESSAGE' ].map((menu) => (
             <ListItem 
               button
               key={menu}
@@ -43,6 +43,7 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
                     menu === 'HOME' ? faHome
                       : menu === 'UPLOAD' ? faUpload
                       : menu === 'PROFILE' ? faCircleUser
+                      : menu == 'Patient' ? faCircleUser
                       : menu === 'NOTIFICATION' ? faBell
                       : faEnvelope
                   }
