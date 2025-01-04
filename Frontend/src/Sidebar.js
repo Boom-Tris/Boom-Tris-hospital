@@ -29,15 +29,13 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
           Menu 
         </Typography>
         <List >
-          {['HOME', 'UPLOAD', 'PROFILE', 'NOTIFICATION', 'MESSAGE'].map((menu) => (
+          {['HOME', 'UPLOAD', 'PROFILE', 'NOTIFICATION', 'MESSAGE' ].map((menu) => (
             <ListItem 
               button
               key={menu}
               className={`menu-item ${selectedMenu === menu ? 'selected' : ''}`}
               onClick={() => handleMenuClick(menu)} // เปลี่ยน route
-              sx={{
-                fontFamily: '"K2D", serif', 
-              }}
+              
             >
               <ListItemIcon>
                 <FontAwesomeIcon 
