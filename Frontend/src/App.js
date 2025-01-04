@@ -16,6 +16,7 @@ import Patient from './pages/Patient';
 
 
 
+
 function App() {
   return (
     <div className='app-background'>
@@ -24,6 +25,7 @@ function App() {
          
           <Route path="/otp" element={<OtpPage />} />
           <Route path="/login" element={<LoginPage />} />
+       
         
          
 
