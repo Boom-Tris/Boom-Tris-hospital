@@ -10,7 +10,7 @@ import {
   Typography,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faUpload, faCircleUser, faBell, faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { faHome, faUpload, faCircleUser, faBell, faEnvelope,faStethoscope } from '@fortawesome/free-solid-svg-icons';
 
 const Sidebar = ({ children }) => { //  props children เพื่อแสดงเนื้อหาหลัก
   const [selectedMenu, setSelectedMenu] = useState('HOME');
@@ -43,7 +43,7 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
                     menu === 'HOME' ? faHome
                       : menu === 'UPLOAD' ? faUpload
                       : menu === 'PROFILE' ? faCircleUser
-                      : menu == 'Patient' ? faCircleUser
+                      : menu == 'PATIENT' ? faStethoscope
                       : menu === 'NOTIFICATION' ? faBell
                       : faEnvelope
                   }
