@@ -1,17 +1,29 @@
 import React, { useState } from 'react';
 import { Grid, Box, Typography, Button } from '@mui/material';
-import '../components/OtpPage.css';  // แน่ใจว่าไฟล์ CSS ถูกนำเข้าแล้ว
+import '../components/OtpPage.css';
 
 const OtpPage = () => {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']); 
+  const [otp, setOtp] = useState(['', '', '', '', '']); 
 
   const handleChange = (e, index) => {
     const newOtp = [...otp];
-    newOtp[index] = e.target.value;
+    const value = e.target.value;
 
-    // เมื่อกรอกครบแล้วให้ไปยังช่องถัดไป
-    if (e.target.value.length === 1 && index < 5) {
-      document.getElementById(`otp-${index + 1}`).focus(); // ย้ายไปช่องถัดไปอัตโนมัติ
+    // ตรวจสอบว่าเป็นตัวเลข
+    if (/[^0-9]/.test(value)) {
+      return; //  จะไม่ทำการอัปเดต
+    }
+
+    newOtp[index] = value;
+
+    // กรอกครบแล้วให้ไปช่องถัดไป
+    if (value.length === 1 && index < 5) {
+      document.getElementById(`otp-${index + 1}`).focus(); // ไปช่องถัดไปอัตโนมัติ
+    }
+
+    // หากผู้ใช้ลบตัวเลข ให้ย้ายโฟกัสกลับไปยังช่องก่อนหน้า
+    if (value === '' && index > 0) {
+      document.getElementById(`otp-${index - 1}`).focus(); // ไปช่องก่อนหน้า
     }
 
     setOtp(newOtp);
@@ -35,8 +47,8 @@ const OtpPage = () => {
       </Grid>
 
       <Grid item xs={12} md={7} className="right-section">
-        <Typography variant="h1" className="otp-title">
-          OTP
+        <Typography variant="h1"  id="otp-title" >
+        Continue with email
         </Typography>
 
         {/* OTP Form */}
@@ -78,7 +90,7 @@ const OtpInput = ({ value, onChange, separator, id }) => {
         id={id}
         value={value}
         onChange={onChange}
-        className="otp-input"  // ใช้ className แทนการใช้ StyledComponent
+        className="otp-input"
         maxLength={1}
         style={{ textAlign: 'center', fontSize: '20px' }}
       />
