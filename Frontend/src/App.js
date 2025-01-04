@@ -19,8 +19,8 @@ function App() {
       <Router>
         <Routes>
          
-          <Route path="/OtpPage" element={<OtpPage />} />
-          <Route path="/LoginPage" element={<LoginPage />} />
+          <Route path="/otp" element={<OtpPage />} />
+          <Route path="/login" element={<LoginPage />} />
 
         
           <Route
