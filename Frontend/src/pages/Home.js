@@ -7,6 +7,9 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 const Home = ({ selectedDate, setSelectedDate }) => {
   return (
     <div>
+         <Typography variant="h4" gutterBottom>
+        HOME
+      </Typography>
       <Typography variant="body1" gutterBottom>
         หน้าหลัก
       </Typography>
