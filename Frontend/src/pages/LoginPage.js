@@ -24,7 +24,7 @@ const LoginPage = () => {
         </Typography>
 
         {/* Form */}
-        <Box className="form-box with-background">
+        <Box className="form-box Login-with-background">
           <form>
             <TextField
               fullWidth
