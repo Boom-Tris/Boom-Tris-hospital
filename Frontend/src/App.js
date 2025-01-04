@@ -10,8 +10,8 @@ import Upload from './pages/Upload';
 import Notification from './pages/Notification';
 import Profile from './pages/Profile';
 import Message from './pages/Message';
-import OtpPage from './OtpPage';
-import LoginPage from './LoginPage';
+import OtpPage from './pages/OtpPage';
+import LoginPage from './pages/LoginPage';
 
 function App() {
   return (
