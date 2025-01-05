@@ -63,12 +63,12 @@ const Home = () => {
       {/* Stats Section */}
       <Grid container spacing={2} sx={{ marginBottom: 4 }}>
         {["จำนวนคนใช้", "จำนวนหมอ", "ใบนัดวันนี้", "ได้รับการกลืนแล้ว", "ผู้ป่วยที่ไม่ได้ตรวจ"].map((text, index) => (
-          <Grid item xs={10} sm={5} md={1.7} key={index}>
+          <Grid item xs={10} sm={5} md={2} key={index}>
             <Card id="custom-stat-card">
               <CardContent>
                 <div className="custom-stat-card-content">
-                  <Typography variant="h5">250</Typography>
-                  <Typography variant="body2">{text}</Typography>
+                  <Typography variant="h5" className="quantity">250</Typography>
+                  <Typography variant="h6" id="TextTyp">{text}</Typography>
                 </div>
               </CardContent>
             </Card>
