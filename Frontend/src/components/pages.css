@@ -8,9 +8,11 @@ body {
 }
 .main-content h4 {
     font-family: "K2D", serif;  
+    
 }
 .main-content p {
     font-family: "K2D", serif;  
+    margin-bottom: 9vh;
 }
 
 /*HOME */
@@ -20,8 +22,8 @@ body {
     background-color: #ffffff;
 
    border-radius: 24px;
-   margin: auto;
-   margin-top: 3vh;
+
+ 
    
 
 }
@@ -29,7 +31,7 @@ body {
 .custom-Upload {
     max-width: 90%;
     margin: auto;
-    margin-top: 3vh;
+   
     padding: 24px; /* เท่ากับ 3 * 8px ใน Material-UI */
     border: 1px solid #ddd;
     background-color: white;
