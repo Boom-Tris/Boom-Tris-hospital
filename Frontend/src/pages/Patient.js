@@ -36,10 +36,18 @@ const columns = [
 const Patient = () => {
   return (
     <div>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h3" gutterBottom>
       Patient
       </Typography>
-      <Typography variant="body1">การแจ้งเตือน</Typography>
+      <Box
+        sx={{
+          borderBottom: "2px solid #000",
+          marginBottom: 2,
+        }}
+      ></Box>
+      <Typography variant="body1" gutterBottom>
+      การแจ้งเตือน
+      </Typography>
 
       <Box sx={{ height: 450, width: '100%' }}>
         {/* ส่วนของ Search และ Attribute */}
