@@ -23,3 +23,14 @@ body {
    
 
 }
+/*Upload*/
+.custom-Upload {
+    max-width: 90%;
+    margin: auto;
+    padding: 24px; /* เท่ากับ 3 * 8px ใน Material-UI */
+    border: 1px solid #ddd;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  }
+  
