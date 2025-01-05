@@ -1,0 +1,22 @@
+.Table
+{
+    background-color: rgb(255, 255, 255);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  
+    
+}
+button.settings-button {
+    background: none;  /* เอาพื้นหลังออก */
+    box-shadow: none;          /* เอาเงาออก */
+    color: #000;               /* ปรับสีข้อความ */
+    border: none;              /* เอาขอบออก */
+    outline: none;             /* เอากรอบเมื่อกดออก */
+  }
+  
+  button.settings-button:hover {
+    color: #ff0707; 
+    box-shadow: none;               /* เอาระดับเงาออก */
+  }
+  
+ 
+  
