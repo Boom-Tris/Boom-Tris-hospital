@@ -13,8 +13,8 @@ import {
   CircularProgress,
   ListItemSecondaryAction,
 } from '@mui/material';
-import { Delete, CheckCircle, Error } from '@mui/icons-material';
-
+import { Delete, CheckCircle, Error } from '@mui/icons-material'; 
+ import '../components/pages.css';
 
 const Upload = () => {
  const [files, setFiles] = useState([]);
@@ -56,14 +56,17 @@ const Upload = () => {
     <div>
        <Typography variant="h4" gutterBottom> Upload </Typography>
       <Typography variant="body1">พื้นที่สำหรับอัพโหลดไฟล์</Typography>
-       <Box
-            sx={{
+       <Box   className="custom-Upload"
+            /* sx={{
               maxWidth: '90%',
               margin: 'auto',
               padding: 3,
+            
               border: '1px solid #ddd',
-              borderRadius: 2,
-            }}
+              backgroundColor: 'white',
+              borderRadius: '10px',
+              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+            }} */
           > 
             
       
