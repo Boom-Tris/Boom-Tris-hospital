@@ -13,12 +13,19 @@ import Message from './pages/Message';
 import OtpPage from './pages/OtpPage';
 import LoginPage from './pages/LoginPage';
 import Patient from './pages/Patient';
-
-
-
+import '@fontsource/k2d';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+const theme = createTheme({
+  typography: {
+    fontFamily: '"K2D", "Roboto", "Helvetica", "Arial", sans-serif',
+  },
+});
 
 function App() {
   return (
+    <ThemeProvider theme={theme}>
+
+   
     <div className='app-background'>
       <Router>
         <Routes>
@@ -47,6 +54,7 @@ function App() {
         </Routes>
       </Router>
     </div>
+    </ThemeProvider>
   );
 }
 

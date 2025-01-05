@@ -12,6 +12,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHome, faUpload, faCircleUser, faBell, faEnvelope,faStethoscope, faBedPulse, faLitecoinSign, faColonSign } from '@fortawesome/free-solid-svg-icons';
 
+
 const Sidebar = ({ children }) => { //  props children เพื่อแสดงเนื้อหาหลัก
   const [selectedMenu, setSelectedMenu] = useState('HOME');
   const navigate = useNavigate();
@@ -22,10 +23,10 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
   };
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
+    <Box sx={{ display: 'flex', height: '100vh'  }} >
      
-      <Box className="sidebar">
-        <Typography variant="h5" className="menu-title" >
+      <Box className="sidebar" >
+        <Typography variant="h5" className="menu-title"  >
           Menu 
         </Typography>
         <List >
@@ -33,11 +34,12 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
             <ListItem 
               button
               key={menu}
-              className={`menu-item ${selectedMenu === menu ? 'selected' : ''}`}
+              
+              className={`menu-item ${selectedMenu === menu ? 'selected' : ''}` }
               onClick={() => handleMenuClick(menu)} // เปลี่ยน route
               
             >
-              <ListItemIcon>
+              <ListItemIcon  >
                 <FontAwesomeIcon 
                   icon={
                     menu === 'HOME' ? faHome
@@ -60,7 +62,7 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
       </Box >
 
       {/*Content */}
-      <Box className="main-content" >
+      <Box className="main-content" > 
         {children} {/* Render เนื้อหาจาก Routes */}
       </Box>
     </Box>

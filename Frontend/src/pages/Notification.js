@@ -1,19 +1,21 @@
-import React from 'react';
-import { Typography, } from '@mui/material';
-
-
-
-
+import React from "react";
+import { Typography, Box } from "@mui/material";
 
 const Notification = () => {
   return (
     <div>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h3" gutterBottom>
         Notification
       </Typography>
-      <Typography variant="body1">การแจ้งเตือน</Typography>
-
-     
+      <Box
+        sx={{
+          borderBottom: "2px solid #000",
+          marginBottom: 2,
+        }}
+      ></Box>
+      <Typography variant="body1" gutterBottom>
+        การแจ้งเตือน
+      </Typography>
     </div>
   );
 };
