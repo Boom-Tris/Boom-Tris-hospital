@@ -10,13 +10,13 @@ body {
 .sidebar { 
     width: 250px;
     background-color: #ffffff;
-    font-family: "K2D", serif;
+
     display: flex;
     flex-direction: column;
     align-items: center;
     padding-top: 16px;
     position: relative;
-    font-family: "K2D", serif; 
+ 
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -48,10 +48,7 @@ body {
     
     font-size: 1.5rem;  
 }
-.sidebar .menu-title,
-.sidebar .MuiListItemText-root {
-    font-family: "K2D", serif  ;  /* กำหนดฟอนต์ */
-}
+
 
 .list-item-divider {
     margin: 0; 
