@@ -43,17 +43,17 @@ const Patient = () => {
 
       <Box sx={{ height: 450, width: '100%' }}>
         {/* ส่วนของ Search และ Attribute */}
-        <Box
-          sx={{
+        <Box 
+          sx={{  
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             mb: 2,
           }}
         >
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex',  gap: 2 }} >
             {/* ช่อง Search */}
-            <TextField
+            <TextField 
               label="Search"
               variant="outlined"
               size="small"
@@ -75,7 +75,7 @@ const Patient = () => {
           </Box>
 
           {/* ปุ่ม Action, New และ Settings */}
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex',  gap: 1 }}>
             <Button variant="contained" color="primary">
               Action
             </Button>
