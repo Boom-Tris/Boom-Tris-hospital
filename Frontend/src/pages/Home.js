@@ -1,5 +1,4 @@
-import React from "react";
-<<<<<<< Updated upstream
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -19,20 +18,19 @@ import { Pie } from "react-chartjs-2";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
-import '../components/pages.css';  // Make sure this import is correct
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-=======
-import { Typography, Box} from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
-import "../components/pages.css";
->>>>>>> Stashed changes
+import "../components/pages.css"; // Make sure this import is correct
 
-
+// Register the chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const Home = () => {
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  const handleDateChange = (newDate) => {
+    setSelectedDate(newDate);
+  };
+
   const data = {
     labels: ["Series 1", "Series 2", "Series 3", "Series 4"],
     datasets: [
@@ -55,7 +53,6 @@ const Home = () => {
   };
 
   return (
-<<<<<<< Updated upstream
     <Box>
       {/* Header */}
       <Typography variant="h4" gutterBottom>
@@ -63,33 +60,34 @@ const Home = () => {
       </Typography>
       <Typography variant="body1">หน้าแรก</Typography>
 
-      
+      {/* Stats Section */}
       <Grid container spacing={2} sx={{ marginBottom: 4 }}>
-  {["จำนวนคนใช้", "จำนวนหมอ", "ใบนัดวันนี้", "ได้รับการกลืนแล้ว", "ผู้ป่วยที่ไม่ได้ตรวจ"].map((text, index) => (
-    <Grid item xs={10} sm={5} md={1.7} key={index}>
-      <Card id="custom-stat-card">
-        <CardContent>
-          <div className="custom-stat-card-content">
-            <Typography variant="h5">250</Typography>
-            <Typography variant="body2">{text}</Typography>
-          </div>
-        </CardContent>
-      </Card>
-    </Grid>
-  ))}
-</Grid>
+        {["จำนวนคนใช้", "จำนวนหมอ", "ใบนัดวันนี้", "ได้รับการกลืนแล้ว", "ผู้ป่วยที่ไม่ได้ตรวจ"].map((text, index) => (
+          <Grid item xs={10} sm={5} md={1.7} key={index}>
+            <Card id="custom-stat-card">
+              <CardContent>
+                <div className="custom-stat-card-content">
+                  <Typography variant="h5">250</Typography>
+                  <Typography variant="body2">{text}</Typography>
+                </div>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
-
-     {/* Main Content */}
+      {/* Main Content */}
       <Grid container spacing={4}>
-     
         <Grid item xs={12} md={6}>
           <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DateCalendar className="custom-calendar" />
+            <DateCalendar
+              date={selectedDate}
+              onChange={handleDateChange}
+              className="custom-calendar"
+            />
           </LocalizationProvider>
         </Grid>
 
-       
         <Grid item xs={12} md={6}>
           <Typography variant="h6" gutterBottom>
             Patient
@@ -122,42 +120,16 @@ const Home = () => {
           </TableContainer>
         </Grid>
 
-     
         <Grid item xs={10}>
           <Card id="custom-pie-chart">
-           
-              <Typography variant="h6">Statistics</Typography>
-              <div >
-                <Pie data={data} options={chartOptions} />
-              </div>
-           
+            <Typography variant="h6">Statistics</Typography>
+            <div>
+              <Pie data={data} options={chartOptions} />
+            </div>
           </Card>
         </Grid>
       </Grid>
     </Box>
-=======
-    <div>
-      <Typography variant="h3" gutterBottom>
-        HOME
-      </Typography>
-      <Box
-        sx={{
-          borderBottom: "2px solid #000",
-          marginBottom: 3
-        }}
-      ></Box>
-      <Typography variant="body1" gutterBottom>
-        หน้าหลัก
-      </Typography>
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <DateCalendar
-          date={selectedDate}
-          onChange={handleDateChange}
-          className="custom-calendar"
-        />
-      </LocalizationProvider>
-    </div>
->>>>>>> Stashed changes
   );
 };
 
