@@ -1,4 +1,5 @@
 import React from "react";
+<<<<<<< Updated upstream
 import {
   Box,
   Typography,
@@ -20,6 +21,13 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 import '../components/pages.css';  // Make sure this import is correct
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+=======
+import { Typography, Box} from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
+import "../components/pages.css";
+>>>>>>> Stashed changes
 
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -47,6 +55,7 @@ const Home = () => {
   };
 
   return (
+<<<<<<< Updated upstream
     <Box>
       {/* Header */}
       <Typography variant="h4" gutterBottom>
@@ -126,6 +135,29 @@ const Home = () => {
         </Grid>
       </Grid>
     </Box>
+=======
+    <div>
+      <Typography variant="h3" gutterBottom>
+        HOME
+      </Typography>
+      <Box
+        sx={{
+          borderBottom: "2px solid #000",
+          marginBottom: 3
+        }}
+      ></Box>
+      <Typography variant="body1" gutterBottom>
+        หน้าหลัก
+      </Typography>
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <DateCalendar
+          date={selectedDate}
+          onChange={handleDateChange}
+          className="custom-calendar"
+        />
+      </LocalizationProvider>
+    </div>
+>>>>>>> Stashed changes
   );
 };
 
