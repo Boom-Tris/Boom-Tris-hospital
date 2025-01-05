@@ -106,7 +106,7 @@ const Patient = () => {
 
   return (
     <div>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h3" gutterBottom>
         Patient
       </Typography>
       <Typography variant="body1">การแจ้งเตือน</Typography>
@@ -189,11 +189,11 @@ const Patient = () => {
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle1" gutterBottom>Sickness</Typography>
-                <TextField label="Sickness" fullWidth multiline rows={4} margin="dense" value={newRow.sickness} onChange={(e) => setNewRow({ ...newRow, sickness: e.target.value })} />
+                <TextField label="Sickness" fullWidth multiline rows={2} margin="dense" value={newRow.sickness} onChange={(e) => setNewRow({ ...newRow, sickness: e.target.value })} />
               </Box>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle1" gutterBottom>Allergic</Typography>
-                <TextField label="Allergic" fullWidth multiline rows={4} margin="dense" value={newRow.allergic} onChange={(e) => setNewRow({ ...newRow, allergic: e.target.value })} />
+                <TextField label="Allergic" fullWidth multiline rows={2} margin="dense" value={newRow.allergic} onChange={(e) => setNewRow({ ...newRow, allergic: e.target.value })} />
               </Box>
             </Box>
 
@@ -215,29 +215,41 @@ const Patient = () => {
         <Dialog open={infoDialog} onClose={handleInfoDialogClose} maxWidth="md" fullWidth>
           <DialogTitle>User Information</DialogTitle>
           <DialogContent>
-            {selectedRow && (
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={8}>
-                  <Paper sx={{ padding: 2 }}>
-                    <Typography variant="h6">Details</Typography>
-                    <Typography variant="body1"><strong>ID:</strong> {selectedRow.id}</Typography>
-                    <Typography variant="body1"><strong>Name:</strong> {selectedRow.name}</Typography>
-                    <Typography variant="body1"><strong>Age:</strong> {selectedRow.age}</Typography>
-                    <Typography variant="body1"><strong>Email:</strong> {selectedRow.email}</Typography>
-                    <Typography variant="body1"><strong>Address:</strong> {selectedRow.address}</Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Paper sx={{ padding: 2, height: '100%' }}>
-                    <Typography variant="subtitle1" gutterBottom>Sickness</Typography>
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', overflow: 'auto' }}>{selectedRow.sickness}</Typography>
-                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 3 }}>Allergic</Typography>
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', overflow: 'auto' }}>{selectedRow.allergic}</Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
-            )}
-          </DialogContent>
+  {selectedRow && (
+    <Grid container spacing={2}>
+      <Grid item xs={12} sm={8}>
+        <Paper sx={{ padding: 2 }}>
+          <Typography variant="h6">Details</Typography>
+          <Typography variant="body1"><strong>ID:</strong> {selectedRow.id}</Typography>
+          <Typography variant="body1"><strong>Name:</strong> {selectedRow.name}</Typography>
+          <Typography variant="body1"><strong>Age:</strong> {selectedRow.age}</Typography>
+          <Typography variant="body1"><strong>Email:</strong> {selectedRow.email}</Typography>
+          <Typography variant="body1"><strong>Address:</strong> {selectedRow.address}</Typography>
+        </Paper>
+      </Grid>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <Paper sx={{ padding: 2, mt: 2,border: '1px solid #ccc' }}>
+            <Typography variant="subtitle1" gutterBottom>Sickness</Typography>
+            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', overflow: 'auto' }}>
+              {selectedRow.sickness}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Paper sx={{ padding: 2, mt: 2 , border: '1px solid #ccc' }}>
+            <Typography variant="subtitle1" gutterBottom>Allergic</Typography>
+            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', overflow: 'auto' }}>
+              {selectedRow.allergic}
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+    </Grid>
+  )}
+</DialogContent>
+
+
           <DialogActions>
             <Button onClick={handleInfoDialogClose}>Close</Button>
           </DialogActions>
