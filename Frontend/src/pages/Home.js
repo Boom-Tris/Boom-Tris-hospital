@@ -67,8 +67,8 @@ const Home = () => {
             <Card id="custom-stat-card">
               <CardContent>
                 <div className="custom-stat-card-content">
-                  <Typography variant="h5">250</Typography>
-                  <Typography variant="body2">{text}</Typography>
+                  <Typography variant="h5" className="quantity">250</Typography>
+                  <Typography variant="h6" id="TextTyp">{text}</Typography>
                 </div>
               </CardContent>
             </Card>
