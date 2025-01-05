@@ -10,7 +10,7 @@ import {
   Typography,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faUpload, faCircleUser, faBell, faEnvelope,faStethoscope } from '@fortawesome/free-solid-svg-icons';
+import { faHome, faUpload, faCircleUser, faBell, faEnvelope,faStethoscope, faBedPulse, faLitecoinSign, faColonSign } from '@fortawesome/free-solid-svg-icons';
 
 
 const Sidebar = ({ children }) => { //  props children เพื่อแสดงเนื้อหาหลัก
@@ -30,7 +30,7 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
           Menu 
         </Typography>
         <List >
-          {['HOME', 'UPLOAD', 'PROFILE','PATIENT', 'NOTIFICATION', 'MESSAGE' ].map((menu) => (
+          {['HOME', 'UPLOAD', 'PROFILE','PATIENT', 'NOTIFICATION', 'MESSAGE','LOGIN' ].map((menu) => (
             <ListItem 
               button
               key={menu}
@@ -47,6 +47,7 @@ const Sidebar = ({ children }) => { //  props children เพื่อแสด�
                       : menu === 'PROFILE' ? faCircleUser
                       : menu === 'PATIENT' ? faStethoscope
                       : menu === 'NOTIFICATION' ? faBell
+                      : menu === 'LOGIN'? faColonSign
                       : faEnvelope
                   }
                   size="lg"
