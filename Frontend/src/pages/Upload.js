@@ -10,6 +10,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  CircularProgress,
   ListItemSecondaryAction,
 } from '@mui/material';
 import { Delete, CheckCircle, Error } from '@mui/icons-material';
@@ -57,7 +58,7 @@ const Upload = () => {
       <Typography variant="body1">พื้นที่สำหรับอัพโหลดไฟล์</Typography>
        <Box
             sx={{
-              maxWidth: 800,
+              maxWidth: '90%',
               margin: 'auto',
               padding: 3,
               border: '1px solid #ddd',
@@ -66,7 +67,7 @@ const Upload = () => {
           > 
             
       
-            <Grid container spacing={3}>
+            <Grid container spacing={10}>
               {/* Left Column */}
               <Grid item xs={12} md={6}>
                 <TextField
@@ -113,7 +114,7 @@ const Upload = () => {
                         secondary={`Size: ${(file.size / 1024).toFixed(2)} KB`}
                       />
                       <ListItemSecondaryAction>
-                        {uploadStatus[file.name] === 'loading' && <LinearProgress />}
+                      {uploadStatus[file.name] === 'loading' && <CircularProgress size={24} />}
                         {uploadStatus[file.name] === 'complete' && (
                           <CheckCircle color="success" />
                         )}
