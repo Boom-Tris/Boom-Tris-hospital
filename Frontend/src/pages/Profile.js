@@ -1,29 +1,36 @@
 import React from 'react';
 import { Select, MenuItem, InputLabel, FormControl , Grid, Box, Typography,
    TextField, Button, Checkbox, FormControlLabel,Avatar } from '@mui/material';
-import '../components/Table.css';
-import'../components/ProfilePage.css';
+import'../components/pages.css';
 const Profile = () => {
   return (
     <div>
-      <Typography variant="h4" gutterBottom>Profile</Typography>
-      <Typography variant="subtitle1">โปรไฟล์ของคุณ</Typography>  
-      <hr style={{ marginBottom: "20px", borderColor: "#ccc" }} />
+      {/*Header Upper box */}
+      <Typography variant="h3" gutterBottom>
+              Profile
+            </Typography>
+            <Box
+              sx={{
+                borderBottom: "2px solid #000",
+                marginBottom: 3,
+              }}
+            ></Box>
+            <Typography variant="body1" gutterBottom>
+              โปรไฟล์ของคุณ
+            </Typography>
+
+      {/*Box */}
       <Box className="Form-box-profile Profile-background"> 
         <form className="form-container">
         <Box
       sx={{
         p: 3,
         maxWidth: "900px",
-        margin: "0 auto",
         background: "#fff",
         borderRadius: "10px",
-        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+        
       }}
     >
-
-      
-
       {/* Profile Section */}
       <Box
         sx={{
