@@ -55,7 +55,7 @@ const Home = () => {
   return (
     <Box>
       {/* Header */}
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h3" gutterBottom>
         HOME
       </Typography>
       <Typography variant="body1">หน้าแรก</Typography>
