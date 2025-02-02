@@ -16,6 +16,7 @@ body {
 /*HOME */
 .quantity{
     color: #7B7B7B;
+    
 }
 #TextTyp {
     color: #271E4A;
@@ -50,12 +51,14 @@ body {
     margin-top: 2vh;
     margin-left: 2vh;
   }
-  #custom-stat-card {
+  .custom-stat-card {
     background-color: #ffffff; 
     border-radius: 24px; 
-  
+    text-align: right;
+    padding-right: 30px; 
+  margin-bottom: 2vh;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    width: 240px;
+    width: 210px;
     height: 90px;
  
   }
