@@ -1,8 +1,18 @@
-import React from 'react';
+import React ,{ useState }  from 'react';
 import { Grid, Box, Typography, TextField, Button, Checkbox, FormControlLabel } from '@mui/material';
 import '../components/LoginPage.css';
 
 const LoginPage = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+
+  const handleLogin = () => {
+    // Add login logic here
+    console.log('Email:', email);
+    console.log('Password:', password);
+    console.log('Remember Me:', rememberMe);
+  };
   return (
     <Grid container className="container">
    
