@@ -18,6 +18,8 @@ import "../components/pages.css";
 const Upload = () => {
   const [files, setFiles] = useState([]);
   const [uploadStatus, setUploadStatus] = useState({});
+  const [email, setEmail] = useState("");
+  const [customLink, setCustomLink] = useState("");
 
   const handleFileUpload = (event) => {
     const uploadedFiles = Array.from(event.target.files).map((file) => ({
@@ -90,12 +92,16 @@ const Upload = () => {
               variant="outlined"
               margin="normal"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
             <TextField
               fullWidth
               label="Customized link"
               variant="outlined"
               margin="normal"
+              value={customLink}
+              onChange={(e) => setCustomLink(e.target.value)}
             />
           </Grid>
 
