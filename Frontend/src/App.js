@@ -9,7 +9,7 @@ import Home from './pages/Home';
 import Upload from './pages/Upload';
 import Notification from './pages/Notification';
 import Profile from './pages/Profile';
-import Message from './pages/Message';
+
 import OtpPage from './pages/OtpPage';
 import LoginPage from './pages/LoginPage';
 import Patient from './pages/Patient';
@@ -45,7 +45,7 @@ function App() {
                   <Route path="/PROFILE" element={<Profile />} />
                   <Route path="/Patient" element={<Patient />} />
                   <Route path="/NOTIFICATION" element={<Notification />} />
-                  <Route path="/MESSAGE" element={<Message />} />
+                
                   <Route index element={<Home />} /> {/* หน้าเริ่มต้น */}
                 </Routes>
               </Sidebar>
