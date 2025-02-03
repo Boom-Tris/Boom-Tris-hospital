@@ -18,5 +18,214 @@ button.settings-button {
     box-shadow: none;               /* เอาระดับเงาออก */
   }
   
- 
-  
+ /* ปรับแต่ง Typography */
+.typography-header {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+/* เส้นคั่น */
+.divider {
+  border-bottom: 2px solid #000;
+  margin-bottom: 16px;
+}
+
+/* กรอบหลักของ DataGrid */
+.data-grid-container {
+  height: 450px;
+  width: 100%;
+}
+
+/* ค้นหาและปุ่มด้านบน */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* กล่องค้นหา */
+.search-box {
+background: white;
+  display: flex;
+  gap: 8px;
+}
+
+.search-box input {
+  width: 200px;
+}
+
+/* ปุ่มด้านขวา */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* ปรับแต่ง DataGrid */
+.Table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Dialog */
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* User Info Dialog */
+.user-info-container {
+  display: flex;
+  gap: 16px;
+}
+
+.user-info-details {
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.user-info-paper {
+  padding: 16px;
+  height: 100%;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.user-info-text {
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+  .row-avatar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.row-avatar img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+.actions-button {
+  color: #f44336; /* color for delete */
+}
+/* ปรับแต่ง Typography */
+.typography-header {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+/* เส้นคั่น */
+.divider {
+  border-bottom: 2px solid #000;
+  margin-bottom: 16px;
+}
+
+/* กรอบหลักของ DataGrid */
+.data-grid-container {
+  height: 450px;
+  width: 100%;
+}
+
+/* ค้นหาและปุ่มด้านบน */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* ค้นหา */
+.search-box {
+  display: flex;
+  gap: 8px;
+}
+
+.search-box input {
+  width: 200px;
+}
+
+/* ปุ่มตั้งค่า */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* ปรับแต่ง DataGrid */
+.Table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Dialog */
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* User Info Dialog */
+.user-info-container {
+  display: flex;
+  gap: 16px;
+}
+
+.user-info-details {
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.user-info-paper {
+  padding: 16px;
+  height: 100%;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.user-info-text {
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+/* Styling for table header */
+.column-header {
+  font-weight: bold;
+  text-align: center;
+  background-color: #ffffff; 
+  padding: 10px;
+  font-size: 14px;
+}
+
+/* Styling for table cell data */
+.column-cell {
+  padding: 10px;
+  text-align: center;
+  font-size: 14px;
+  color: #333; 
+}
+
+
+.column-age, .column-email, .column-address, .column-sickness, .column-allergic {
+
+  color: #555; 
+}

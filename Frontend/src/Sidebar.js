@@ -10,58 +10,58 @@ import {
   Typography,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faUpload, faCircleUser, faBell, faEnvelope,faStethoscope } from '@fortawesome/free-solid-svg-icons';
+import {
+  faHome,
+  faUpload,
+  faCircleUser,
+  faBell,
+  faStethoscope,
+  faColonSign,
+} from '@fortawesome/free-solid-svg-icons';
 
-
-const Sidebar = ({ children }) => { //  props children เพื่อแสดงเนื้อหาหลัก
+const Sidebar = ({ children }) => {
   const [selectedMenu, setSelectedMenu] = useState('HOME');
   const navigate = useNavigate();
 
   const handleMenuClick = (menu) => {
     setSelectedMenu(menu);
-    navigate(`/${menu}`); // เปลี่ยน URL
+    navigate(`/${menu.toLowerCase()}`); // เปลี่ยน URL เป็นตัวพิมพ์เล็ก
   };
 
+  const menuItems = [
+    { text: 'HOME', icon: faHome },
+    { text: 'UPLOAD', icon: faUpload },
+    { text: 'PROFILE', icon: faCircleUser },
+    { text: 'PATIENT', icon: faStethoscope },
+    { text: 'NOTIFICATION', icon: faBell },
+    { text: 'LOGIN', icon: faColonSign },
+  ];
+
   return (
-    <Box sx={{ display: 'flex', height: '100vh'  }} >
-     
-      <Box className="sidebar" >
-        <Typography variant="h5" className="menu-title"  >
-          Menu 
+    <Box sx={{ display: 'flex', height: '100vh' }}>
+      <Box className="sidebar">
+        <Typography variant="h5" className="menu-title">
+          Menu
         </Typography>
-        <List >
-          {['HOME', 'UPLOAD', 'PROFILE','PATIENT', 'NOTIFICATION', 'MESSAGE' ].map((menu) => (
-            <ListItem 
-              button
-              key={menu}
-              
-              className={`menu-item ${selectedMenu === menu ? 'selected' : ''}` }
-              onClick={() => handleMenuClick(menu)} // เปลี่ยน route
-              
+        <List>
+          {menuItems.map((item) => (
+            <ListItem
+              button="true" // แปลงเป็นสตริง
+              key={item.text}
+              className={`menu-item ${selectedMenu === item.text ? 'selected' : ''}`}
+              onClick={() => handleMenuClick(item.text)}
             >
-              <ListItemIcon  >
-                <FontAwesomeIcon 
-                  icon={
-                    menu === 'HOME' ? faHome
-                      : menu === 'UPLOAD' ? faUpload
-                      : menu === 'PROFILE' ? faCircleUser
-                      : menu === 'PATIENT' ? faStethoscope
-                      : menu === 'NOTIFICATION' ? faBell
-                      : faEnvelope
-                  }
-                  size="lg"
-                  className="icon-color"
-                />
+              <ListItemIcon>
+                <FontAwesomeIcon icon={item.icon} size="lg" className="icon-color" />
               </ListItemIcon>
-              <ListItemText primary={menu} />
-              
+              <ListItemText primary={item.text} />
             </ListItem>
           ))}
         </List>
-      </Box >
+      </Box>
 
-      {/*Content */}
-      <Box className="main-content" > 
+      {/* Content */}
+      <Box className="main-content">
         {children} {/* Render เนื้อหาจาก Routes */}
       </Box>
     </Box>

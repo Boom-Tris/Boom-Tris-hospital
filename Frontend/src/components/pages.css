@@ -14,6 +14,15 @@ body {
 
 
 /*HOME */
+.quantity{
+    color: #7B7B7B;
+    
+}
+#TextTyp {
+    color: #271E4A;
+   
+    font-weight: 700;
+}
 .custom-calendar
 {
     background-color: #ffffff;
@@ -42,12 +51,15 @@ body {
     margin-top: 2vh;
     margin-left: 2vh;
   }
-  #custom-stat-card {
+  .custom-stat-card {
     background-color: #ffffff; 
     border-radius: 24px; 
+    text-align: right;
+    padding-right: 30px; 
+  margin-bottom: 2vh;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    width: 200px;
-    height: 80px;
+    width: 210px;
+    height: 90px;
  
   }
   .custom-stat-card-content {
@@ -67,5 +79,39 @@ body {
     border-radius: 24px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
+
+
+  /*Profile page*/
+  .Profile-background {
+    background-color: #ffffff;
+    padding: 40px;
+    margin: auto;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 24px; 
+  }
+  .Form-box-profile {
+    width: 80%;
+    max-width: 1200px;
+    
+  }
+  .form-container {
+    display: flex;
+    flex-direction: column; /* Form rows stack vertically */
+    
+  }
+  .sign-in-button {
+    align-self: center; /* Optional to align the button properly */
+  }
+  .form-row {
+    display: flex;
+    gap: 1rem; /* Spacing between form fields */
+  }
+
+  .font-upper-form {
+    font-family: "K2D", serif;
+    font-size: smaller;
+  }
   
 
+
+  

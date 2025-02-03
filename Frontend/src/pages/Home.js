@@ -51,7 +51,7 @@ const Home = () => {
     responsive: true,
     maintainAspectRatio: false,
   };
-
+  const items = ["จำนวนคนใช้", "จำนวนหมอ", "ใบนัดวันนี้", "ได้รับการกลืนแล้ว", "ผู้ป่วยที่ไม่ได้ตรวจ"];
   return (
     <Box>
       {/* Header */}
@@ -61,20 +61,16 @@ const Home = () => {
       <Typography variant="body1">หน้าแรก</Typography>
 
       {/* Stats Section */}
-      <Grid container spacing={2} sx={{ marginBottom: 4 }}>
-        {["จำนวนคนใช้", "จำนวนหมอ", "ใบนัดวันนี้", "ได้รับการกลืนแล้ว", "ผู้ป่วยที่ไม่ได้ตรวจ"].map((text, index) => (
-          <Grid item xs={10} sm={5} md={1.7} key={index}>
-            <Card id="custom-stat-card">
-              <CardContent>
-                <div className="custom-stat-card-content">
-                  <Typography variant="h5">250</Typography>
-                  <Typography variant="body2">{text}</Typography>
-                </div>
-              </CardContent>
-            </Card>
-          </Grid>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        {items.map((text, index) => (
+          <Box
+            key={index}
+            className ="custom-stat-card"
+          >
+            <Typography variant="h6">{text}</Typography>
+          </Box>
         ))}
-      </Grid>
+      </Box>
 
       {/* Main Content */}
       <Grid container spacing={4}>

@@ -12,12 +12,14 @@ import {
   ListItemText,
   ListItemSecondaryAction,
 } from "@mui/material";
-import { Delete, CheckCircle, Error } from "@mui/icons-material";
+import { Delete, CheckCircle } from "@mui/icons-material";
 import "../components/pages.css";
 
 const Upload = () => {
   const [files, setFiles] = useState([]);
   const [uploadStatus, setUploadStatus] = useState({});
+  const [email, setEmail] = useState("");
+  const [customLink, setCustomLink] = useState("");
 
   const handleFileUpload = (event) => {
     const uploadedFiles = Array.from(event.target.files).map((file) => ({
@@ -90,12 +92,16 @@ const Upload = () => {
               variant="outlined"
               margin="normal"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
             <TextField
               fullWidth
               label="Customized link"
               variant="outlined"
               margin="normal"
+              value={customLink}
+              onChange={(e) => setCustomLink(e.target.value)}
             />
           </Grid>
 
@@ -105,7 +111,7 @@ const Upload = () => {
               <Typography mb={1} sx={{textAlign: "center"}}>Link or drag and drop</Typography>
               <Button
                 variant="outlined"
-                component="label"
+                component="label" // แปลงเป็นสตริง
                 sx={{
                   border: "2px dashed #ddd",
                   padding: "20px",

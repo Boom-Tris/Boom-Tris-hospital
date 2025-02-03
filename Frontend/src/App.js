@@ -9,12 +9,15 @@ import Home from './pages/Home';
 import Upload from './pages/Upload';
 import Notification from './pages/Notification';
 import Profile from './pages/Profile';
-import Message from './pages/Message';
+import { useEffect, useState } from "react";
 import OtpPage from './pages/OtpPage';
 import LoginPage from './pages/LoginPage';
 import Patient from './pages/Patient';
 import '@fontsource/k2d';
+import axios from "axios";
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { CircularProgress, Typography } from '@mui/material'; // เพิ่มการนำเข้า
+
 const theme = createTheme({
   typography: {
     fontFamily: '"K2D", "Roboto", "Helvetica", "Arial", sans-serif',
@@ -22,40 +25,55 @@ const theme = createTheme({
 });
 
 function App() {
+  const [serverOnline, setServerOnline] = useState(null); // เช็คสถานะเซิร์ฟเวอร์
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        await axios.get("http://localhost:3001/", { timeout: 5000 });
+        setServerOnline(true); // เซิร์ฟเวอร์ทำงานอยู่
+      } catch (error) {
+        console.error("❌ Server is offline or API error:", error);
+        setServerOnline(false); // เซิร์ฟเวอร์ล่ม
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
-
-   
-    <div className='app-background'>
-      <Router>
-        <Routes>
-         
-          <Route path="/otp" element={<OtpPage />} />
-          <Route path="/login" element={<LoginPage />} />
-       
-        
-         
-
-        
-          <Route
-            path="/*"
-            element={
-              <Sidebar>
-                <Routes>
-                  <Route path="/HOME" element={<Home />} />
-                  <Route path="/UPLOAD" element={<Upload />} />
-                  <Route path="/PROFILE" element={<Profile />} />
-                  <Route path="/Patient" element={<Patient />} />
-                  <Route path="/NOTIFICATION" element={<Notification />} />
-                  <Route path="/MESSAGE" element={<Message />} />
-                  <Route index element={<Home />} /> {/* หน้าเริ่มต้น */}
-                </Routes>
-              </Sidebar>
-            }
-          />
-        </Routes>
-      </Router>
-    </div>
+       {serverOnline === null ? ( // ขณะเช็คเซิร์ฟเวอร์
+        <CircularProgress className="LoadServer"/>
+      ) : !serverOnline ? ( // เซิร์ฟเวอร์ไม่ทำงาน
+        <Typography variant="h5" color="error" className="NE">
+          ⚠️ เซิร์ฟเวอร์ไม่ทำงาน กรุณาลองใหม่ภายหลัง
+        </Typography>
+      ) : (
+        <div className='app-background'>
+          <Router>
+            <Routes>
+              <Route path="/otp" element={<OtpPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/*"
+                element={
+                  <Sidebar>
+                    <Routes>
+                      <Route path="/home" element={<Home />} />
+                      <Route path="/upload" element={<Upload />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/patient" element={<Patient />} />
+                      <Route path="/notification" element={<Notification />} />
+                      <Route index element={<Home />} /> {/* หน้าเริ่มต้น */}
+                    </Routes>
+                  </Sidebar>
+                }
+              />
+            </Routes>
+          </Router>
+        </div>
+      )}
     </ThemeProvider>
   );
 }
