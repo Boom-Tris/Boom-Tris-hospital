@@ -65,7 +65,7 @@ const Home = () => {
         {items.map((text, index) => (
           <Box
             key={index}
-            className =""
+            className ="custom-stat-card"
           >
             <Typography variant="h6">{text}</Typography>
           </Box>
