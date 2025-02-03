@@ -46,7 +46,7 @@ const Sidebar = ({ children }) => {
         <List>
           {menuItems.map((item) => (
             <ListItem
-              button
+              button="true" // Convert to string
               key={item.text}
               className={`menu-item ${selectedMenu === item.text ? 'selected' : ''}`}
               onClick={() => handleMenuClick(item.text)}
