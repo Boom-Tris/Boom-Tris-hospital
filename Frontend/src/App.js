@@ -52,7 +52,7 @@ function App() {
         <Typography variant="h5" color="error" className="NE">
           ⚠️ เซิร์ฟเวอร์ไม่ทำงาน กรุณาลองใหม่ภายหลัง
         </Typography>
-      ):(
+      ) : (
         <div className='app-background'>
           <Router>
             <Routes>
