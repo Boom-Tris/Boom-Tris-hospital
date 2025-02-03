@@ -16,7 +16,7 @@ import Patient from './pages/Patient';
 import '@fontsource/k2d';
 import axios from "axios";
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { Box, CircularProgress, Typography } from '@mui/material'; // เพิ่มการนำเข้า
+import { CircularProgress, Typography } from '@mui/material'; // เพิ่มการนำเข้า
 
 const theme = createTheme({
   typography: {
@@ -25,15 +25,12 @@ const theme = createTheme({
 });
 
 function App() {
-  const [users, setUsers] = useState([]);
   const [serverOnline, setServerOnline] = useState(null); // เช็คสถานะเซิร์ฟเวอร์
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        
-        const response = await axios.get("http://localhost:3001/", { timeout: 5000 });
-       
+        await axios.get("http://localhost:3001/", { timeout: 5000 });
         setServerOnline(true); // เซิร์ฟเวอร์ทำงานอยู่
       } catch (error) {
         console.error("❌ Server is offline or API error:", error);

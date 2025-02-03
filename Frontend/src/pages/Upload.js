@@ -12,7 +12,7 @@ import {
   ListItemText,
   ListItemSecondaryAction,
 } from "@mui/material";
-import { Delete, CheckCircle, Error } from "@mui/icons-material";
+import { Delete, CheckCircle } from "@mui/icons-material";
 import "../components/pages.css";
 
 const Upload = () => {
@@ -111,7 +111,7 @@ const Upload = () => {
               <Typography mb={1} sx={{textAlign: "center"}}>Link or drag and drop</Typography>
               <Button
                 variant="outlined"
-                component="label"
+                component="label" // แปลงเป็นสตริง
                 sx={{
                   border: "2px dashed #ddd",
                   padding: "20px",
