@@ -36,3 +36,29 @@
     transform: rotate(360deg);
   }
 }
+.NE {
+  position: fixed; /* ใช้ fixed เพื่อให้คอนเทนเนอร์อยู่กลางจอ */
+  top: 50%; /* จัดให้อยู่ตรงกลางแนวตั้ง */
+  left: 50%; /* จัดให้อยู่ตรงกลางแนวนอน */
+  transform: translate(-50%, -50%); /* เลื่อนคอนเทนเนอร์ให้ตรงกลาง */
+  background-color: #ffffff; /* พื้นหลังสีขาว */
+  padding: 20px; /* เพิ่ม padding */
+  border-radius: 8px; /* ขอบโค้งมน */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* เพิ่มเงา */
+  text-align: center;
+  max-width: 400px; /* กำหนดขนาดสูงสุด */
+  width: 100%; /* ให้เต็มความกว้าง */
+}
+.LoadServer{
+  position: fixed; /* ใช้ fixed เพื่อให้คอนเทนเนอร์อยู่กลางจอ */
+  top: 50%; /* จัดให้อยู่ตรงกลางแนวตั้ง */
+  left: 50%; /* จัดให้อยู่ตรงกลางแนวนอน */
+  transform: translate(-50%, -50%); /* เลื่อนคอนเทนเนอร์ให้ตรงกลาง */
+ 
+  padding: 20px; /* เพิ่ม padding */
+  border-radius: 8px; /* ขอบโค้งมน */
+  
+  text-align: center;
+  
+  width: 100%; /* ให้เต็มความกว้าง */
+}
