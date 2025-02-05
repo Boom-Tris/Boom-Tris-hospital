@@ -16,10 +16,10 @@ const LoginPage = () => {
   return (
     <Grid container className="container">
    
-      <Grid item xs={12} md={5} className="left-section">
+      <Grid item xs={12} md={4} className="left-section">
         <Box>
           <img
-            src="https://via.placeholder.com/300x400"
+            src={`${process.env.PUBLIC_URL}/images/skeleton.png`}
             alt="Medical Illustration"
             className="illustration"
           />
@@ -29,13 +29,21 @@ const LoginPage = () => {
       
       <Grid item xs={12} md={7} className="right-section">
         
-        <Typography variant="h1" className="login-title">
-          Login
+        <Typography variant="h2" className="login-title">
+          Login  
+          <Box
+            sx={{
+              borderBottom: "2px solid #000"  ,
+              marginTop: 3,
+              }}
+          ></Box>
         </Typography>
-
+        
+        
         {/* Form */}
         <Box className="form-box Login-with-background">
           <form>
+            
             <TextField
               fullWidth
               label="Email address"

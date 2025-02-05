@@ -7,7 +7,7 @@
 
   
   .left-section {
-    background-color: #E9F3FE; 
+    background-color: hsl(210, 72%, 93%); 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -29,8 +29,9 @@
   .login-title {
    
     position: absolute;
-    top: 20px;
-    left: 20px;
+    width: 100%;
+    top: 5%;
+    left: 4%;
    
   
   }
@@ -59,4 +60,3 @@
     padding: 20px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
   }
-  
