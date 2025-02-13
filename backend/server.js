@@ -31,6 +31,29 @@ app.get("/", (req, res) => {
   res.json({ message: "Server is online" });
 });
 
+// Login
+app.post("/login", (req, res) => {
+  console.log("📩 Login Request:", req.body);  // ✅ Log ค่าที่รับเข้ามา
+  const { email, password } = req.body;
+
+  const sql = "SELECT * FROM doctors WHERE LOWER(email) = LOWER(?) AND password = ? ";
+  db.query(sql, [email, password], (err, data) => { 
+    if (err) {
+        console.error("❌ SQL Error:", err);
+        return res.status(500).json({ message: "Internal Server Error", error: err });
+    }
+
+    console.log("🧐 Query Result:", data);  // ✅ Log ผลลัพธ์ที่ดึงจากฐานข้อมูล
+
+    if (data.length > 0) {
+        return res.json({ message: "Login Success", user: data[0] }); 
+    } else {
+        return res.status(401).json({ message: "No Record Found" }); // ❌ Backend ส่ง 401
+    }
+});
+});
+
+
 // 🔹 Webhook รับข้อมูลจาก LINE OA
 app.post("/webhook", (req, res) => {
   const events = req.body.events;
