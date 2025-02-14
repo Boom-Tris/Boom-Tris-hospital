@@ -34,6 +34,7 @@ const Sidebar = ({ children }) => {
     { text: 'PROFILE', icon: faCircleUser },
     { text: 'PATIENT', icon: faStethoscope },
     { text: 'NOTIFICATION', icon: faBell },
+    { text: 'Add_personnel', icon: faColonSign },
     { text: 'LOGIN', icon: faColonSign },
   ];
 

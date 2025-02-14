@@ -13,10 +13,12 @@ import { useEffect, useState } from "react";
 import OtpPage from './pages/OtpPage';
 import LoginPage from './pages/LoginPage';
 import Patient from './pages/Patient';
+import Add_personnel from './pages/Add_personnel';
 import '@fontsource/k2d';
 import axios from "axios";
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { CircularProgress, Typography } from '@mui/material'; // เพิ่มการนำเข้า
+
 
 const theme = createTheme({
   typography: {
@@ -55,6 +57,7 @@ function App() {
             <Routes>
               <Route path="/otp" element={<OtpPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/Add_personnel" element={<Add_personnel />} />
               <Route
                 path="/*"
                 element={
@@ -65,6 +68,7 @@ function App() {
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/patient" element={<Patient />} />
                       <Route path="/notification" element={<Notification />} />
+                     
                       <Route index element={<Home />} /> {/* หน้าเริ่มต้น */}
                     </Routes>
                   </Sidebar>
