@@ -113,14 +113,14 @@ const Patient = () => {
   },
   { 
     field: 'sickness', 
-    headerName: 'Sickness', 
+    headerName: 'โรคประจำตัว', 
     width: 150, 
     headerClassName: 'column-header column-sickness', 
     cellClassName: 'column-cell column-sickness' 
   },
   { 
     field: 'LINE_ID', 
-    headerName: 'LINE', 
+    headerName: 'LINE ID', 
     width: 150, 
     headerClassName: 'column-header column-allergic', 
     cellClassName: 'column-cell column-allergic' 

@@ -90,7 +90,6 @@ const LoginPage = () => {
             />
             {error && <Typography color="error">{error}</Typography>}
             <Button
-              fullWidth
               variant="contained"
               color="primary"
               className="sign-in-button"
