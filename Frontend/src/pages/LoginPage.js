@@ -8,33 +8,39 @@ const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState(''); // For displaying error message
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = async (event) => {
     event.preventDefault();
-
-    setError(''); // Clear any previous error
+    setError('');
 
     try {
-      const response = await axios.post('http://localhost:3001/login', {
-        username, 
-        password
+      const response = await axios.post('http://localhost:3001/login', { 
+        username,  
+        password 
       });
 
-      console.log('✅ Response:', response.data);
+      console.log("📩 Server Response:", response.data); // Debug Response
 
-      if (response.data.message === "Login Success") { // ตรวจสอบว่า Login สำเร็จ
-        // ✅ Save user data in localStorage
+      if (response.data.message === "Login Success") {
+        console.log("✅ Login Successful!");
         localStorage.setItem("user", JSON.stringify(response.data.user));
 
-        navigate("/home"); // ✅ Navigate to Home page after login success
+        // Debug LocalStorage
+        console.log("📌 Stored User Data:", localStorage.getItem("user"));
+
+        console.log("🔄 Redirecting to /home...");
+        setTimeout(() => {
+          navigate("/home"); // เพิ่มดีเลย์เล็กน้อยเพื่อให้ React อัปเดต UI
+        }, 500);
       } else {
-        setError(response.data.message || 'Invalid username or password!'); // Show error message
+        setError(response.data.message || 'Invalid username or password!');
       }
+
     } catch (error) {
       console.error("❌ Login Error:", error.response?.data?.message || "Unknown Error");
-      setError('Login Failed! Please try again.'); // Show error message
+      setError('Login Failed! Please try again.');
     }
   };
 
@@ -82,7 +88,7 @@ const LoginPage = () => {
               label="Remember Me"
               className="checkbox"
             />
-            {error && <Typography color="error">{error}</Typography>} {/* Display error message */}
+            {error && <Typography color="error">{error}</Typography>}
             <Button
               fullWidth
               variant="contained"

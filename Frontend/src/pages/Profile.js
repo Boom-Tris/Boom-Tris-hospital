@@ -26,7 +26,7 @@ const Profile = () => {
         expertise: user.expertise || '',
         affiliation: user.affiliation || '',
         username: user.username || '',
-        avatarUrl: user.avatarUrl || 'https://via.placeholder.com/100', // กำหนด URL สำหรับ avatar
+     
       }); // กำหนดค่าที่ดึงมาให้กับ profile
     } else {
       console.error("❌ No user data found in localStorage.");

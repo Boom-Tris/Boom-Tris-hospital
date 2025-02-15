@@ -12,18 +12,23 @@ const Add_personnel = () => {
     position: "",
     expertise: "",
     affiliation: "",
+    email: "", // Added email field
   });
 
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
 
-  // ✅ ฟังก์ชันจัดการค่าฟอร์ม
+  // Handle form field changes
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
 
-  // ✅ ฟังก์ชันบันทึกข้อมูลลง API
+  // ✅ ฟังก์ชันจัดการค่าฟอร์ม
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -49,16 +54,22 @@ const Add_personnel = () => {
           position: formData.position,
           expertise: formData.expertise,
           affiliation: formData.affiliation,
+          email: formData.email, // ส่งอีเมลไปยัง API
         }),
       });
 
+      // ตรวจสอบผลลัพธ์ที่ได้รับจาก API
       const result = await response.json();
+      console.log(result); // ล็อกผลลัพธ์เพื่อดูข้อมูลที่ได้รับจาก API
+
       if (response.ok) {
         setSnackbarMessage("✅ Personnel added successfully");
         setSnackbarSeverity("success");
-        setFormData({ username: "", password: "", confirmPassword: "", name: "", nickname: "", position: "", expertise: "", affiliation: "" });
+
+        // ล้างฟอร์มหลังจากบันทึกข้อมูล
+        setFormData({ username: "", password: "", confirmPassword: "", name: "", nickname: "", position: "", expertise: "", affiliation: "", email: "" });
       } else {
-        setSnackbarMessage(`❌ Error: ${result.error}`);
+        setSnackbarMessage(`❌ Error: ${result.message || result.error}`);
         setSnackbarSeverity("error");
       }
     } catch (error) {
@@ -110,6 +121,9 @@ const Add_personnel = () => {
                 <TextField fullWidth label="Affiliation" name="affiliation" value={formData.affiliation} onChange={handleChange} variant="outlined" required />
               </Grid>
               <Grid item xs={12} sm={6}>
+                <TextField fullWidth label="Email" name="email" value={formData.email} onChange={handleChange} variant="outlined" required /> {/* Added Email Field */}
+              </Grid>
+              <Grid item xs={12} sm={6}>
                 <TextField fullWidth label="Password" type="password" name="password" value={formData.password} onChange={handleChange} variant="outlined" required />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -118,7 +132,7 @@ const Add_personnel = () => {
 
               {/* ปุ่ม Cancel และ Confirm */}
               <Grid item xs={12} sm={6}>
-                <Button fullWidth variant="contained" color="secondary" onClick={() => setFormData({ username: "", password: "", confirmPassword: "", name: "", nickname: "", position: "", expertise: "", affiliation: "" })}>
+                <Button fullWidth variant="contained" color="secondary" onClick={() => setFormData({ username: "", password: "", confirmPassword: "", name: "", nickname: "", position: "", expertise: "", affiliation: "", email: "" })}>
                   Cancel
                 </Button>
               </Grid>
