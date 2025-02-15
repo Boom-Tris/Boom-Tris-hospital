@@ -1,9 +1,9 @@
 require("dotenv").config();
 const express = require("express");
-const mysql = require("mysql");
+const mysql = require("mysql2");
 const cors = require("cors");
 const axios = require("axios");
-
+const bcrypt = require('bcrypt'); 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -15,7 +15,10 @@ const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
 db.connect((err) => {
@@ -32,25 +35,46 @@ app.get("/", (req, res) => {
 });
 
 // Login
-app.post("/login", (req, res) => {
-  console.log("📩 Login Request:", req.body);  // ✅ Log ค่าที่รับเข้ามา
-  const { email, password } = req.body;
+app.post("/login", async (req, res) => {
+  console.log("📩 Login Request:", req.body); // Log ค่าที่รับเข้ามา
+  const { username, password } = req.body; // ใช้ username แทน email
 
-  const sql = "SELECT * FROM doctors WHERE LOWER(email) = LOWER(?) AND password = ? ";
-  db.query(sql, [email, password], (err, data) => { 
+  // ตรวจสอบข้อมูลจากตาราง admins
+  let sql = "SELECT * FROM admins WHERE LOWER(username) = LOWER(?)";
+  db.query(sql, [username], (err, results) => {
     if (err) {
-        console.error("❌ SQL Error:", err);
+      return res.status(500).json({ message: "Internal Server Error", error: err });
+    }
+
+    if (results.length > 0) {
+      // พบแอดมิน, ตรวจสอบรหัสผ่านโดยไม่ใช้ bcrypt
+      if (results[0].password === password) { // เปลี่ยนการตรวจสอบให้ตรงๆ
+        return res.json({ message: "Login Success", user: results[0], role: "admin" });
+      } else {
+        return res.status(401).json({ message: "Invalid password for admin" });
+      }
+    }
+
+    // หากไม่พบในตาราง admins ตรวจสอบใน MedicalPersonnel
+    sql = "SELECT * FROM MedicalPersonnel WHERE LOWER(username) = LOWER(?)";
+    db.query(sql, [username], (err, medicalResults) => {
+      if (err) {
         return res.status(500).json({ message: "Internal Server Error", error: err });
-    }
+      }
 
-    console.log("🧐 Query Result:", data);  // ✅ Log ผลลัพธ์ที่ดึงจากฐานข้อมูล
+      if (medicalResults.length > 0) {
+        // พบบุคลากรทางการแพทย์, ตรวจสอบรหัสผ่านโดยไม่ใช้ bcrypt
+        if (medicalResults[0].password === password) { // เปลี่ยนการตรวจสอบให้ตรงๆ
+          return res.json({ message: "Login Success", user: medicalResults[0], role: "medicalPersonnel" });
+        } else {
+          return res.status(401).json({ message: "Invalid password for medical personnel" });
+        }
+      }
 
-    if (data.length > 0) {
-        return res.json({ message: "Login Success", user: data[0] }); 
-    } else {
-        return res.status(401).json({ message: "No Record Found" }); // ❌ Backend ส่ง 401
-    }
-});
+      // หากไม่พบผู้ใช้ในทั้งสองตาราง
+      return res.status(404).json({ message: "User not found" });
+    });
+  });
 });
 
 
@@ -86,6 +110,119 @@ app.post("/webhook", (req, res) => {
 
   res.sendStatus(200);
 });
+
+//API  สำหรับ MedicalPersonnel ดึงข้อมูลบุคลากรทางการแพทย์ทั้งหมด
+app.get("/medical-personnel", async (req, res) => {
+  try {
+    const [data] = await db.promise().query("SELECT * FROM MedicalPersonnel");
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching MedicalPersonnel:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// API เพิ่มบุคลากรทางการแพทย์
+app.post("/medical-personnel", async (req, res) => {
+  try {
+    const { username, password, name, nickname, position, expertise, affiliation } = req.body;
+    const sql = "INSERT INTO MedicalPersonnel (username, password, name, nickname, position, expertise, affiliation) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    await db.promise().query(sql, [username, password, name, nickname, position, expertise, affiliation]);
+    res.json({ message: "✅ Medical Personnel added successfully" });
+  } catch (err) {
+    console.error("❌ Error adding MedicalPersonnel:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+//API ลบบุคลากรทางการแพทย์
+app.delete("/medical-personnel/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.promise().query("DELETE FROM MedicalPersonnel WHERE MedicalPersonnel_id = ?", [id]);
+    res.json({ message: "✅ Medical Personnel deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting MedicalPersonnel:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API reginster
+app.post("/register", async (req, res) => {
+  try {
+    const { MedicalPersonnel_id, register_date } = req.body;
+    const sql = "INSERT INTO Register (MedicalPersonnel_id, register_date) VALUES (?, ?)";
+    await db.promise().query(sql, [MedicalPersonnel_id, register_date]);
+    res.json({ message: "✅ Register record added successfully" });
+  } catch (err) {
+    console.error("❌ Error adding register:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ดึงข้อมูลการลงทะเบียนทั้งหมด
+
+app.get("/registers", async (req, res) => {
+  try {
+    const [data] = await db.promise().query("SELECT * FROM Register");
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching registers:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// api ดึงข้อมูล ผู้ป่วย
+app.get("/patients", async (req, res) => {
+  try {
+    const [data] = await db.promise().query("SELECT * FROM Patient");
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching patients:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// api ลบ ผู้ป่วย
+app.delete("/patients/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.promise().query("DELETE FROM Patient WHERE patient_id = ?", [id]);
+    res.json({ message: "✅ Patient deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting patient:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// api แจ้งเตือน
+app.post("/notifications", async (req, res) => {
+  try {
+    const { MedicalPersonnel_id, patient_id, notification_type, notification_info, countdown_notification, status } = req.body;
+    const sql = "INSERT INTO Notification (MedicalPersonnel_id, patient_id, notification_type, notification_info, countdown_notification, status) VALUES (?, ?, ?, ?, ?, ?)";
+    await db.promise().query(sql, [MedicalPersonnel_id, patient_id, notification_type, notification_info, countdown_notification, status]);
+    res.json({ message: "✅ Notification added successfully" });
+  } catch (err) {
+    console.error("❌ Error adding notification:", err);
+    res.status(500).json({ error: err.message });
+  }
+})
+
+//api ดึงข้อมูลการแจ้งเตือนทั้งหมด
+app.get("/notifications", async (req, res) => {
+  try {
+    const [data] = await db.promise().query("SELECT * FROM Notification");
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching notifications:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 
 // ฟังก์ชันส่งข้อความกลับไปที่ LINE
 // ฟังก์ชันส่งข้อความกลับไปที่ LINE
