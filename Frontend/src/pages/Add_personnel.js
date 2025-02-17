@@ -131,16 +131,29 @@ const Add_personnel = () => {
               </Grid>
 
               {/* ปุ่ม Cancel และ Confirm */}
-              <Grid item xs={12} sm={6}>
-                <Button fullWidth variant="contained" color="secondary" onClick={() => setFormData({ username: "", password: "", confirmPassword: "", name: "", nickname: "", position: "", expertise: "", affiliation: "", email: "" })}>
-                  Cancel
-                </Button>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Button fullWidth variant="contained" color="primary" type="submit">
-                  Confirm
-                </Button>
-              </Grid>
+             
+              <Grid item xs={12}>
+  <Grid container spacing={2} justifyContent="space-between">
+    
+    <Grid item xs={6}>
+      <Button
+        fullWidth
+        variant="contained"
+        color="secondary"
+        onClick={() => setFormData({ username: "", password: "", confirmPassword: "", name: "", nickname: "", position: "", expertise: "", affiliation: "", email: "" })}
+      >
+        Cancel
+      </Button>
+      
+    </Grid>
+    <Grid item xs={6}>
+      <Button fullWidth variant="contained" color="primary" type="submit">
+        Confirm
+      </Button>
+    </Grid>
+  </Grid>
+</Grid>
+
             </Grid>
           </form>
         </Box>

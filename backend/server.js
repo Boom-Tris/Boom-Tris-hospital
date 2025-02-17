@@ -41,7 +41,12 @@ app.get("/getProfile", async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "Unauthorized" });
 
-    const { data, error } = await supabase.from("medicalpersonnel").select("*").single();
+    const { data, error } = await supabase
+    .from("medicalpersonnel")
+    .select("*")
+    .eq("username", req.query.username)
+    .single();
+  
 
     if (error) return res.status(500).json({ message: "Error fetching profile" });
     
@@ -52,7 +57,7 @@ app.get("/getProfile", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  console.log("📩 การร้องขอการเข้าสู่ระบบ:", req.body);
+  console.log("📩 Login request:", req.body);
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -67,10 +72,10 @@ app.post("/login", async (req, res) => {
       .eq('username', username)
       .single();
     
-    console.log("🔍 ผลลัพธ์จากตาราง admins:", admins); // ดูข้อมูลที่ได้จาก Supabase
+    console.log("🔍 Results from the table admins:", admins); // ดูข้อมูลที่ได้จาก Supabase
 
     if (adminError) {
-      console.error("❌ ไม่พบผู้ใช้ในตาราง admins:", adminError);
+      console.error("❌ The user was not found in the table  admins:", adminError);
 
       // หากไม่พบในตาราง admins, ตรวจสอบในตาราง medicalPersonnel
       let { data: medicalResults, error: medicalError } = await supabase
@@ -79,10 +84,10 @@ app.post("/login", async (req, res) => {
         .eq('username', username)
         .single();
 
-      console.log("🔍 ผลลัพธ์จากตาราง medicalPersonnel:", medicalResults); // ดูข้อมูลที่ได้จาก Supabase
+      console.log("🔍 Results from the table medicalPersonnel:", medicalResults); // ดูข้อมูลที่ได้จาก Supabase
 
       if (medicalError) {
-        console.error("❌ ไม่พบผู้ใช้ในตาราง medicalPersonnel:", medicalError);
+        console.error("❌ The user was not found in the table medicalPersonnel:", medicalError);
         return res.status(404).json({ message: "User not found" });
       }
 
@@ -110,7 +115,7 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid password for admin" });
     }
   } catch (err) {
-    console.error("❌ เกิดข้อผิดพลาดระหว่างการล็อกอิน:", err);
+    console.error("❌ An error occurred during login:", err);
     return res.status(500).json({ message: "Internal Server Error", error: err });
   }
 });
@@ -118,6 +123,7 @@ app.post("/login", async (req, res) => {
 app.post("/medical-personnel", async (req, res) => {
   try {
     const { username, password, name, nickname, position, expertise, affiliation, email } = req.body;
+    console.log("📩 Request body:", req.body);
 
     // ตรวจสอบว่ามีข้อมูลครบหรือไม่
     if (!username || !password || !name || !position || !expertise || !affiliation || !email) {
