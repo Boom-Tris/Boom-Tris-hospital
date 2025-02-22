@@ -3,6 +3,7 @@ const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const cors = require("cors");
 const axios = require("axios");
+const cron = require("node-cron");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -11,11 +12,14 @@ const PORT = process.env.PORT || 3001;
 const supabaseUrl = "https://wxsaarugacjbneliilek.supabase.co";
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
 
 app.use(cors());
 app.use(express.json());
 
-// ✅ ทดสอบเชื่อมต่อ Supabase
+const userInputStatus = {};
+
+// ✅ ทดสอบเชื่อมต่อ Supabaseึ
 async function testConnection() {
   try {
     const { data, error } = await supabase.from("admins").select("*");
@@ -42,14 +46,14 @@ app.get("/getProfile", async (req, res) => {
     if (!token) return res.status(401).json({ message: "Unauthorized" });
 
     const { data, error } = await supabase
-    .from("medicalpersonnel")
-    .select("*")
-    .eq("username", req.query.username)
-    .single();
-  
+      .from("medicalpersonnel")
+      .select("*")
+      .eq("username", req.query.username)
+      .single();
 
-    if (error) return res.status(500).json({ message: "Error fetching profile" });
-    
+    if (error)
+      return res.status(500).json({ message: "Error fetching profile" });
+
     res.json(data);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -61,33 +65,44 @@ app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ message: "Please provide both username and password." });
+    return res
+      .status(400)
+      .json({ message: "Please provide both username and password." });
   }
 
   try {
     // ตรวจสอบตาราง admins
     let { data: admins, error: adminError } = await supabase
-      .from('admins')
-      .select('*')
-      .eq('username', username)
+      .from("admins")
+      .select("*")
+      .eq("username", username)
       .single();
-    
+
     console.log("🔍 Results from the table admins:", admins); // ดูข้อมูลที่ได้จาก Supabase
 
     if (adminError) {
-      console.error("❌ The user was not found in the table  admins:", adminError);
+      console.error(
+        "❌ The user was not found in the table  admins:",
+        adminError
+      );
 
       // หากไม่พบในตาราง admins, ตรวจสอบในตาราง medicalPersonnel
       let { data: medicalResults, error: medicalError } = await supabase
-        .from('medicalpersonnel')
-        .select('*')
-        .eq('username', username)
+        .from("medicalpersonnel")
+        .select("*")
+        .eq("username", username)
         .single();
 
-      console.log("🔍 Results from the table medicalPersonnel:", medicalResults); // ดูข้อมูลที่ได้จาก Supabase
+      console.log(
+        "🔍 Results from the table medicalPersonnel:",
+        medicalResults
+      ); // ดูข้อมูลที่ได้จาก Supabase
 
       if (medicalError) {
-        console.error("❌ The user was not found in the table medicalPersonnel:", medicalError);
+        console.error(
+          "❌ The user was not found in the table medicalPersonnel:",
+          medicalError
+        );
         return res.status(404).json({ message: "User not found" });
       }
 
@@ -96,10 +111,12 @@ app.post("/login", async (req, res) => {
         return res.json({
           message: "Login Success",
           user: medicalResults,
-          role: "medicalPersonnel"
+          role: "medicalPersonnel",
         });
       } else {
-        return res.status(401).json({ message: "Invalid password for medical personnel" });
+        return res
+          .status(401)
+          .json({ message: "Invalid password for medical personnel" });
       }
     }
 
@@ -109,60 +126,228 @@ app.post("/login", async (req, res) => {
       return res.json({
         message: "Login Success",
         user: admins,
-        role: "admin"
+        role: "admin",
       });
     } else {
       return res.status(401).json({ message: "Invalid password for admin" });
     }
   } catch (err) {
     console.error("❌ An error occurred during login:", err);
-    return res.status(500).json({ message: "Internal Server Error", error: err });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err });
   }
 });
 // ✅ เพิ่ม personnel ใหม่
 app.post("/medical-personnel", async (req, res) => {
   try {
-    const { username, password, name, nickname, position, expertise, affiliation, email } = req.body;
+    const {
+      username,
+      password,
+      name,
+      nickname,
+      position,
+      expertise,
+      affiliation,
+      email,
+    } = req.body;
     console.log("📩 Request body:", req.body);
 
     // ตรวจสอบว่ามีข้อมูลครบหรือไม่
-    if (!username || !password || !name || !position || !expertise || !affiliation || !email) {
-      return res.status(400).json({ message: "Please provide all required fields." });
+    if (
+      !username ||
+      !password ||
+      !name ||
+      !position ||
+      !expertise ||
+      !affiliation ||
+      !email
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all required fields." });
     }
 
     // เพิ่มข้อมูลลงใน Supabase
-    const { data, error } = await supabase
-      .from("medicalpersonnel")
-      .insert([
-        {
-          username,
-          password,
-          name,
-          nickname,
-          position,
-          expertise,
-          affiliation,
-          email, // เพิ่มฟิลด์อีเมล
-        },
-      ]);
+    const { data, error } = await supabase.from("medicalpersonnel").insert([
+      {
+        username,
+        password,
+        name,
+        nickname,
+        position,
+        expertise,
+        affiliation,
+        email, // เพิ่มฟิลด์อีเมล
+      },
+    ]);
 
     console.log("Data:", data);
     console.log("Error:", error);
 
     if (error) {
-      return res.status(500).json({ message: "Error adding personnel", error: error.message });
+      return res
+        .status(500)
+        .json({ message: "Error adding personnel", error: error.message });
     }
 
     // ส่งข้อมูลกลับให้ frontend
-    return res.status(201).json({ message: "Personnel added successfully", data });
+    return res
+      .status(201)
+      .json({ message: "Personnel added successfully", data });
   } catch (err) {
     console.error("❌ Error:", err);
-    return res.status(500).json({ message: "Server error", error: err.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err.message });
   }
 });
+
+// ✅ ฟังก์ชันช่วยส่งข้อความไปยัง LINE
+async function sendLineMessage(replyToken, messageText) {
+  try {
+    await axios.post(
+      "https://api.line.me/v2/bot/message/reply",
+      {
+        replyToken: replyToken,
+        messages: [{ type: "text", text: messageText }],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${LINE_ACCESS_TOKEN}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("❌ Error sending message:", error);
+  }
+}
+
+async function insertPatientData(lineUserId, data) {
+  try {
+    const { error } = await supabase.from("patient").insert([{ lineid: lineUserId, ...data }]);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error inserting patient data:", error);
+    return false;
+  }
+}
+
+// ✅ ดึงข้อมูลผู้ใช้จาก LINE Webhook
+app.post("/webhook", async (req, res) => {
+  const events = req.body.events;
+
+  if (!events || events.length === 0) {
+    return res.status(400).send("No events received");
+  }
+
+  console.log("Received events:", JSON.stringify(events, null, 2));
+
+  for (const event of events) {
+    const lineUserId = event.source.userId;
+
+    // ✅ เช็คว่าเป็นข้อความหรือไม่
+    if (!event.message || event.message.type !== "text") {
+      console.log("🚨 Received a non-text message, ignoring.");
+      return res.status(200).send("OK");
+    }
+
+    const messageText = event.message.text.trim();
+
+    // ✅ ถ้าผู้ใช้พิมพ์ "สวัสดี" ให้เริ่มต้นการกรอกข้อมูลใหม่
+    if (messageText === "สวัสดี") {
+      userInputStatus[lineUserId] = { step: "name", data: {} };
+      await sendLineMessage(event.replyToken, "กรุณากรอกชื่อของคุณ");
+      return res.status(200).send("OK");
+    }
+
+    // ✅ ตรวจสอบว่าผู้ใช้มีสถานะการกรอกข้อมูลอยู่หรือไม่
+    if (userInputStatus[lineUserId]) {
+      const currentStep = userInputStatus[lineUserId].step;
+      const userData = userInputStatus[lineUserId].data;
+
+      if (currentStep === "name") {
+        userData.name = messageText;
+        userInputStatus[lineUserId].step = "email";
+        await sendLineMessage(event.replyToken, "กรุณากรอกอีเมลของคุณ");
+      } else if (currentStep === "email") {
+        // ✅ เช็คว่าเป็นรูปแบบอีเมลหรือไม่
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(messageText)) {
+          await sendLineMessage(event.replyToken, "กรุณากรอกอีเมลให้ถูกต้อง");
+          return res.status(200).send("OK");
+        }
+        userData.email = messageText;
+        userInputStatus[lineUserId].step = "phone";
+        await sendLineMessage(event.replyToken, "กรุณากรอกเบอร์โทรศัพท์ของคุณ");
+      } else if (currentStep === "phone") {
+        // ✅ เช็คว่าเป็นตัวเลขหรือไม่
+        if (isNaN(messageText)) {
+          await sendLineMessage(event.replyToken, "กรุณากรอกเฉพาะตัวเลขสำหรับเบอร์โทรศัพท์");
+          return res.status(200).send("OK");
+        }
+        userData.tel = messageText;
+        userInputStatus[lineUserId].step = "address";
+        await sendLineMessage(event.replyToken, "กรุณากรอกที่อยู่ของคุณ");
+      } else if (currentStep === "address") {
+        userData.address = messageText;
+        userInputStatus[lineUserId].step = "sickness";
+        await sendLineMessage(event.replyToken, "กรุณากรอกโรคที่คุณเป็นอยู่");
+      } else if (currentStep === "sickness") {
+        userData.sickness = messageText;
+        userInputStatus[lineUserId].step = "age";
+        await sendLineMessage(event.replyToken, "กรุณากรอกอายุของคุณ");
+      } else if (currentStep === "age") {
+        // ✅ เช็คว่าเป็นตัวเลขหรือไม่
+        if (isNaN(messageText)) {
+          await sendLineMessage(event.replyToken, "กรุณากรอกอายุเป็นตัวเลข");
+          return res.status(200).send("OK");
+        }
+        userData.age = messageText;
+        userInputStatus[lineUserId].step = "allergic";
+        await sendLineMessage(event.replyToken, "กรุณากรอกข้อมูลอาการแพ้ (ถ้ามี)");
+      } else if (currentStep === "allergic") {
+        userData.allergic = messageText;
+        
+        // ✅ ตรวจสอบว่าข้อมูลครบก่อนบันทึก
+        if (
+          !userData.name ||
+          !userData.email ||
+          !userData.tel ||
+          !userData.address ||
+          !userData.sickness ||
+          !userData.age ||
+          !userData.allergic
+        ) {
+          await sendLineMessage(event.replyToken, "ข้อมูลไม่ครบ กรุณาเริ่มใหม่โดยพิมพ์ 'สวัสดี'");
+          return res.status(200).send("OK");
+        }
+
+        // ✅ บันทึกข้อมูลลงในฐานข้อมูล
+        if (await insertPatientData(lineUserId, userData)) {
+          await sendLineMessage(event.replyToken, "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว");
+          delete userInputStatus[lineUserId]; // 🔹 ลบสถานะออกจากหน่วยความจำ
+        } else {
+          await sendLineMessage(event.replyToken, "เกิดข้อผิดพลาด กรุณาลองใหม่");
+        }
+      }
+    } else {
+      // 🔹 กรณีที่ผู้ใช้ส่งข้อความที่ไม่เกี่ยวข้อง
+      await sendLineMessage(event.replyToken, "พิมพ์ 'สวัสดี' เพื่อเริ่มกรอกข้อมูลใหม่ครับ");
+    }
+  }
+
+  res.status(200).send("OK");
+});
+
+
+
 
 
 // ✅ เริ่มเซิร์ฟเวอร์
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+
