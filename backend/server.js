@@ -7,6 +7,9 @@ const axios = require("axios");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 // เชื่อมต่อกับ Supabase
 const supabaseUrl = "https://wxsaarugacjbneliilek.supabase.co";
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -56,6 +59,7 @@ app.get("/getProfile", async (req, res) => {
   }
 });
 
+//Login สำหรับ Admin และ Medical Personnel
 app.post("/login", async (req, res) => {
   console.log("📩 Login request:", req.body);
   const { username, password } = req.body;
@@ -65,60 +69,60 @@ app.post("/login", async (req, res) => {
   }
 
   try {
-    // ตรวจสอบตาราง admins
-    let { data: admins, error: adminError } = await supabase
-      .from('admins')
-      .select('*')
-      .eq('username', username)
+    // 🔍 ตรวจสอบตาราง admins
+    let { data: adminUser, error: adminError } = await supabase
+      .from("admins")
+      .select("*")
+      .eq("username", username)
       .single();
-    
-    console.log("🔍 Results from the table admins:", admins); // ดูข้อมูลที่ได้จาก Supabase
 
-    if (adminError) {
-      console.error("❌ The user was not found in the table  admins:", adminError);
-
-      // หากไม่พบในตาราง admins, ตรวจสอบในตาราง medicalPersonnel
-      let { data: medicalResults, error: medicalError } = await supabase
-        .from('medicalpersonnel')
-        .select('*')
-        .eq('username', username)
-        .single();
-
-      console.log("🔍 Results from the table medicalPersonnel:", medicalResults); // ดูข้อมูลที่ได้จาก Supabase
-
-      if (medicalError) {
-        console.error("❌ The user was not found in the table medicalPersonnel:", medicalError);
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // เปรียบเทียบรหัสผ่านสำหรับ medical personnel
-      if (medicalResults.password === password) {
+    if (!adminError && adminUser) {
+      // ✅ ตรวจสอบรหัสผ่านที่ถูก Hash
+      const isMatch = await bcrypt.compare(password, adminUser.password);
+      if (isMatch) {
+        console.log("🔑 Login Success for Admin:", adminUser);
         return res.json({
           message: "Login Success",
-          user: medicalResults,
-          role: "medicalPersonnel"
+          user: adminUser,
+          role: "admin",
+        });
+      } else {
+        return res.status(401).json({ message: "Invalid password for admin" });
+      }
+    }
+
+    // 🔍 หากไม่พบในตาราง admins, ตรวจสอบในตาราง medicalPersonnel
+    let { data: medicalUser, error: medicalError } = await supabase
+      .from("medicalpersonnel")
+      .select("*")
+      .eq("username", username)
+      .single();
+
+    if (!medicalError && medicalUser) {
+      // ✅ ตรวจสอบรหัสผ่านที่ถูก Hash
+      const isMatch = await bcrypt.compare(password, medicalUser.password);
+      if (isMatch) {
+        console.log("🔑 Login Success for Medical Personnel:", medicalUser);
+        return res.json({
+          message: "Login Success",
+          user: medicalUser,
+          role: "medicalPersonnel",
         });
       } else {
         return res.status(401).json({ message: "Invalid password for medical personnel" });
       }
     }
 
-    // เปรียบเทียบรหัสผ่านสำหรับ admin
-    if (admins.password === password) {
-      console.log("🔑 Login Success for Admin:", admins); // เพิ่มการพิมพ์ข้อมูลผู้ใช้ที่เข้าสู่ระบบสำเร็จ
-      return res.json({
-        message: "Login Success",
-        user: admins,
-        role: "admin"
-      });
-    } else {
-      return res.status(401).json({ message: "Invalid password for admin" });
-    }
+    // ❌ ไม่พบผู้ใช้ในทั้งสองตาราง
+    return res.status(404).json({ message: "User not found" });
+
   } catch (err) {
     console.error("❌ An error occurred during login:", err);
-    return res.status(500).json({ message: "Internal Server Error", error: err });
+    return res.status(500).json({ message: "Internal Server Error", error: err.message });
   }
 });
+
+
 // ✅ เพิ่ม personnel ใหม่
 app.post("/medical-personnel", async (req, res) => {
   try {
@@ -130,33 +134,35 @@ app.post("/medical-personnel", async (req, res) => {
       return res.status(400).json({ message: "Please provide all required fields." });
     }
 
+    // ✅ Hash รหัสผ่านก่อนบันทึก
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     // เพิ่มข้อมูลลงใน Supabase
     const { data, error } = await supabase
       .from("medicalpersonnel")
       .insert([
         {
           username,
-          password,
+          password: hashedPassword, // ใช้รหัสผ่านที่ถูก hash แล้ว
           name,
           nickname,
           position,
           expertise,
           affiliation,
-          email, // เพิ่มฟิลด์อีเมล
+          email,
         },
       ]);
 
-    console.log("Data:", data);
-    console.log("Error:", error);
+    console.log("📦 Data:", data);
+    console.log("❌ Error:", error);
 
     if (error) {
       return res.status(500).json({ message: "Error adding personnel", error: error.message });
     }
 
-    // ส่งข้อมูลกลับให้ frontend
     return res.status(201).json({ message: "Personnel added successfully", data });
   } catch (err) {
-    console.error("❌ Error:", err);
+    console.error("❌ Server Error:", err);
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 });

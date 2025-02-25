@@ -12,7 +12,7 @@ const Add_personnel = () => {
     position: "",
     expertise: "",
     affiliation: "",
-    email: "", // Added email field
+    email: "", // Added email field 
   });
 
   const [openSnackbar, setOpenSnackbar] = useState(false);
