@@ -3,39 +3,50 @@ const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const cors = require("cors");
 const axios = require("axios");
-const cron = require("node-cron");
 
+const jwt = require("jsonwebtoken");
 const app = express();
 const PORT = process.env.PORT || 3001;
-
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
+if (!process.env.SUPABASE_KEY || !process.env.LINE_ACCESS_TOKEN || !process.env.JWT_SECRET) {
+  console.error("❌ Missing required environment variables!");
+  process.exit(1);
+}
 // เชื่อมต่อกับ Supabase
-const supabaseUrl = "https://wxsaarugacjbneliilek.supabase.co";
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
 
-app.use(cors());
+app.use(helmet());
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
+  message: "Too many requests, please try again later.",
+});
+app.use(limiter);
+
+// 🌍 CORS Configuration (จำกัด origin)
+const corsOptions = {
+  origin: process.env.CORS_ALLOWED_ORIGINS?.split(",") || "*",
+  methods: "GET,POST",
+  allowedHeaders: "Content-Type,Authorization",
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
-const userInputStatus = {};
+// ป้องกัน SQL Injection และตรวจสอบข้อมูลก่อนใช้งาน
+const sanitizeInput = (input) => {
+  if (typeof input !== "string") return "";
+  return input.replace(/[^\w\s@.-]/gi, ""); // ลบอักขระที่อันตราย
+};
 
-// ✅ ทดสอบเชื่อมต่อ Supabaseึ
-async function testConnection() {
-  try {
-    const { data, error } = await supabase.from("admins").select("*");
-    if (error) {
-      console.error("❌ Error connecting to Supabase:", error);
-    } else {
-      console.log("✅ Connected to Supabase:", data);
-    }
-  } catch (err) {
-    console.error("❌ Error:", err);
-  }
-}
-testConnection();
+
+
 
 // ✅ ทดสอบเซิร์ฟเวอร์
 app.get("/", (req, res) => {
@@ -47,15 +58,17 @@ app.get("/getProfile", async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "Unauthorized" });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.username) return res.status(403).json({ message: "Invalid token" });
 
+    const username = sanitizeInput(req.query.username);
     const { data, error } = await supabase
       .from("medicalpersonnel")
       .select("*")
-      .eq("username", req.query.username)
+      .eq("username", username)
       .single();
 
-    if (error)
-      return res.status(500).json({ message: "Error fetching profile" });
+    if (error) return res.status(500).json({ message: "Error fetching profile" });
 
     res.json(data);
   } catch (err) {
@@ -65,67 +78,33 @@ app.get("/getProfile", async (req, res) => {
 
 //Login สำหรับ Admin และ Medical Personnel
 app.post("/login", async (req, res) => {
-  console.log("📩 Login request:", req.body);
+ 
   const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ message: "Please provide both username and password." });
-  }
-
+  if (!username || !password) return res.status(400).json({ message: "Missing username or password." }); 
+   
   try {
+    const cleanUsername = sanitizeInput(username);
     // 🔍 ตรวจสอบตาราง admins
-    let { data: adminUser, error: adminError } = await supabase
-      .from("admins")
-      .select("*")
-      .eq("username", username)
-      .single();
+    const tables = ["admins", "medicalpersonnel"];
 
-    if (!adminError && adminUser) {
-      // ✅ ตรวจสอบรหัสผ่านที่ถูก Hash
-      const isMatch = await bcrypt.compare(password, adminUser.password);
-      if (isMatch) {
-        console.log("🔑 Login Success for Admin:", adminUser);
-        return res.json({
-          message: "Login Success",
-          user: adminUser,
-          role: "admin",
-        });
-      } else {
-        return res.status(401).json({ message: "Invalid password for admin" });
+     for (const table of tables) {
+      let { data: user, error } = await supabase.from(table).select("*").eq("username", cleanUsername).single();
+      if (!error && user) {
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (isMatch) {
+          //สร้าง JWT Token
+          const token = jwt.sign({ username: user.username, role: table }, process.env.JWT_SECRET, {
+            expiresIn: "2h",
+          });
+          return res.json({ message: "Login Success", user: { username: user.username, role: table }, token });
+        } else {
+          return res.status(401).json({ message: "Invalid password" });
+        }
       }
     }
-
-    // 🔍 หากไม่พบในตาราง admins, ตรวจสอบในตาราง medicalPersonnel
-    let { data: medicalUser, error: medicalError } = await supabase
-      .from("medicalpersonnel")
-      .select("*")
-      .eq("username", username)
-      .single();
-
-    if (!medicalError && medicalUser) {
-      // ✅ ตรวจสอบรหัสผ่านที่ถูก Hash
-      const isMatch = await bcrypt.compare(password, medicalUser.password);
-      if (isMatch) {
-        console.log("🔑 Login Success for Medical Personnel:", medicalUser);
-        return res.json({
-          message: "Login Success",
-          user: medicalUser,
-          role: "medicalPersonnel",
-        });
-      } else {
-        return res
-          .status(401)
-          .json({ message: "Invalid password for medical personnel" });
-      }
-    }
-
-    // ❌ ไม่พบผู้ใช้ในทั้งสองตาราง
     return res.status(404).json({ message: "User not found" });
-
   } catch (err) {
-    console.error("❌ An error occurred during login:", err);
     return res.status(500).json({ message: "Internal Server Error", error: err.message });
   }
 });
@@ -134,34 +113,12 @@ app.post("/login", async (req, res) => {
 // ✅ เพิ่ม personnel ใหม่
 app.post("/medical-personnel", async (req, res) => {
   try {
-    const {
-      username,
-      password,
-      name,
-      nickname,
-      position,
-      expertise,
-      affiliation,
-      email,
-    } = req.body;
-    console.log("📩 Request body:", req.body);
-
-    // ตรวจสอบว่ามีข้อมูลครบหรือไม่
-    if (
-      !username ||
-      !password ||
-      !name ||
-      !position ||
-      !expertise ||
-      !affiliation ||
-      !email
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required fields." });
+    const { username, password, name, position, expertise, affiliation, email } = req.body;
+    if (!username || !password || !name || !position || !expertise || !affiliation || !email) {
+      return res.status(400).json({ message: "Please provide all required fields." });
     }
 
-    // ✅ Hash รหัสผ่านก่อนบันทึก
+      // ✅ Hash รหัสผ่านก่อนบันทึก
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // เพิ่มข้อมูลลงใน Supabase
@@ -180,20 +137,14 @@ app.post("/medical-personnel", async (req, res) => {
         },
       ]);
 
-    console.log("📦 Data:", data);
-    console.log("❌ Error:", error);
+  
 
-    if (error) {
-      return res
-        .status(500)
-        .json({ message: "Error adding personnel", error: error.message });
+      if (error) return res.status(500).json({ message: "Error adding personnel", error: error.message });
+
+      return res.status(201).json({ message: "Personnel added successfully", data });
+    } catch (err) {
+      return res.status(500).json({ message: "Server error", error: err.message });
     }
-
-    return res.status(201).json({ message: "Personnel added successfully", data });
-  } catch (err) {
-    console.error("❌ Server Error:", err);
-    return res.status(500).json({ message: "Server error", error: err.message });
-  }
 });
 
 // ✅ ฟังก์ชันช่วยส่งข้อความไปยัง LINE
@@ -230,109 +181,116 @@ async function insertPatientData(lineUserId, data) {
 
 // ✅ ดึงข้อมูลผู้ใช้จาก LINE Webhook
 app.post("/webhook", async (req, res) => {
-  const events = req.body.events;
+  // ตรวจสอบความปลอดภัย: ตรวจสอบว่า header 'x-line-signature' มีหรือไม่
+  const signature = req.headers["x-line-signature"];
+  if (!signature) return res.status(403).send("Forbidden");
 
-  if (!events || events.length === 0) {
-    return res.status(400).send("No events received");
-  }
+  try {
+    // รับข้อมูล events จาก body ของ request
+    const events = req.body.events;
+    if (!events || events.length === 0) return res.status(400).send("No events received");
 
-  console.log("Received events:", JSON.stringify(events, null, 2));
+    console.log("Received events:", JSON.stringify(events, null, 2));
 
-  for (const event of events) {
-    const lineUserId = event.source.userId;
+    for (const event of events) {
+      const lineUserId = event.source.userId;
 
-    // ✅ เช็คว่าเป็นข้อความหรือไม่
-    if (!event.message || event.message.type !== "text") {
-      console.log("🚨 Received a non-text message, ignoring.");
-      return res.status(200).send("OK");
-    }
-
-    const messageText = event.message.text.trim();
-
-    // ✅ ถ้าผู้ใช้พิมพ์ "สวัสดี" ให้เริ่มต้นการกรอกข้อมูลใหม่
-    if (messageText === "สวัสดี") {
-      userInputStatus[lineUserId] = { step: "name", data: {} };
-      await sendLineMessage(event.replyToken, "กรุณากรอกชื่อของคุณ");
-      return res.status(200).send("OK");
-    }
-
-    // ✅ ตรวจสอบว่าผู้ใช้มีสถานะการกรอกข้อมูลอยู่หรือไม่
-    if (userInputStatus[lineUserId]) {
-      const currentStep = userInputStatus[lineUserId].step;
-      const userData = userInputStatus[lineUserId].data;
-
-      if (currentStep === "name") {
-        userData.name = messageText;
-        userInputStatus[lineUserId].step = "email";
-        await sendLineMessage(event.replyToken, "กรุณากรอกอีเมลของคุณ");
-      } else if (currentStep === "email") {
-        // ✅ เช็คว่าเป็นรูปแบบอีเมลหรือไม่
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(messageText)) {
-          await sendLineMessage(event.replyToken, "กรุณากรอกอีเมลให้ถูกต้อง");
-          return res.status(200).send("OK");
-        }
-        userData.email = messageText;
-        userInputStatus[lineUserId].step = "phone";
-        await sendLineMessage(event.replyToken, "กรุณากรอกเบอร์โทรศัพท์ของคุณ");
-      } else if (currentStep === "phone") {
-        // ✅ เช็คว่าเป็นตัวเลขหรือไม่
-        if (isNaN(messageText)) {
-          await sendLineMessage(event.replyToken, "กรุณากรอกเฉพาะตัวเลขสำหรับเบอร์โทรศัพท์");
-          return res.status(200).send("OK");
-        }
-        userData.tel = messageText;
-        userInputStatus[lineUserId].step = "address";
-        await sendLineMessage(event.replyToken, "กรุณากรอกที่อยู่ของคุณ");
-      } else if (currentStep === "address") {
-        userData.address = messageText;
-        userInputStatus[lineUserId].step = "sickness";
-        await sendLineMessage(event.replyToken, "กรุณากรอกโรคที่คุณเป็นอยู่");
-      } else if (currentStep === "sickness") {
-        userData.sickness = messageText;
-        userInputStatus[lineUserId].step = "age";
-        await sendLineMessage(event.replyToken, "กรุณากรอกอายุของคุณ");
-      } else if (currentStep === "age") {
-        // ✅ เช็คว่าเป็นตัวเลขหรือไม่
-        if (isNaN(messageText)) {
-          await sendLineMessage(event.replyToken, "กรุณากรอกอายุเป็นตัวเลข");
-          return res.status(200).send("OK");
-        }
-        userData.age = messageText;
-        userInputStatus[lineUserId].step = "allergic";
-        await sendLineMessage(event.replyToken, "กรุณากรอกข้อมูลอาการแพ้ (ถ้ามี)");
-      } else if (currentStep === "allergic") {
-        userData.allergic = messageText;
-        
-        // ✅ ตรวจสอบว่าข้อมูลครบก่อนบันทึก
-        if (
-          !userData.name ||
-          !userData.email ||
-          !userData.tel ||
-          !userData.address ||
-          !userData.sickness ||
-          !userData.age ||
-          !userData.allergic
-        ) {
-          await sendLineMessage(event.replyToken, "ข้อมูลไม่ครบ กรุณาเริ่มใหม่โดยพิมพ์ 'สวัสดี'");
-          return res.status(200).send("OK");
-        }
-
-        // ✅ บันทึกข้อมูลลงในฐานข้อมูล
-        if (await insertPatientData(lineUserId, userData)) {
-          await sendLineMessage(event.replyToken, "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว");
-          delete userInputStatus[lineUserId]; // 🔹 ลบสถานะออกจากหน่วยความจำ
-        } else {
-          await sendLineMessage(event.replyToken, "เกิดข้อผิดพลาด กรุณาลองใหม่");
-        }
+      // ✅ ตรวจสอบว่าเป็นข้อความประเภท 'text' หรือไม่
+      if (!event.message || event.message.type !== "text") {
+        console.log("🚨 Received a non-text message, ignoring.");
+        return res.status(200).send("OK");
       }
-    } else {
-      // 🔹 กรณีที่ผู้ใช้ส่งข้อความที่ไม่เกี่ยวข้อง
-      await sendLineMessage(event.replyToken, "พิมพ์ 'สวัสดี' เพื่อเริ่มกรอกข้อมูลใหม่ครับ");
-    }
-  }
 
-  res.status(200).send("OK");
+      const messageText = event.message.text.trim();
+
+      // ✅ ถ้าผู้ใช้พิมพ์ "สวัสดี" ให้เริ่มต้นการกรอกข้อมูลใหม่
+      if (messageText === "สวัสดี") {
+        userInputStatus[lineUserId] = { step: "name", data: {} };
+        await sendLineMessage(event.replyToken, "กรุณากรอกชื่อของคุณ");
+        return res.status(200).send("OK");
+      }
+
+      // ✅ ตรวจสอบสถานะการกรอกข้อมูลของผู้ใช้
+      if (userInputStatus[lineUserId]) {
+        const currentStep = userInputStatus[lineUserId].step;
+        const userData = userInputStatus[lineUserId].data;
+
+        if (currentStep === "name") {
+          userData.name = messageText;
+          userInputStatus[lineUserId].step = "email";
+          await sendLineMessage(event.replyToken, "กรุณากรอกอีเมลของคุณ");
+        } else if (currentStep === "email") {
+          // ✅ ตรวจสอบว่าอีเมลที่กรอกถูกต้องหรือไม่
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(messageText)) {
+            await sendLineMessage(event.replyToken, "กรุณากรอกอีเมลให้ถูกต้อง");
+            return res.status(200).send("OK");
+          }
+          userData.email = messageText;
+          userInputStatus[lineUserId].step = "phone";
+          await sendLineMessage(event.replyToken, "กรุณากรอกเบอร์โทรศัพท์ของคุณ");
+        } else if (currentStep === "phone") {
+          // ✅ ตรวจสอบว่าเป็นตัวเลขหรือไม่สำหรับเบอร์โทรศัพท์
+          if (isNaN(messageText)) {
+            await sendLineMessage(event.replyToken, "กรุณากรอกเฉพาะตัวเลขสำหรับเบอร์โทรศัพท์");
+            return res.status(200).send("OK");
+          }
+          userData.tel = messageText;
+          userInputStatus[lineUserId].step = "address";
+          await sendLineMessage(event.replyToken, "กรุณากรอกที่อยู่ของคุณ");
+        } else if (currentStep === "address") {
+          userData.address = messageText;
+          userInputStatus[lineUserId].step = "sickness";
+          await sendLineMessage(event.replyToken, "กรุณากรอกโรคที่คุณเป็นอยู่");
+        } else if (currentStep === "sickness") {
+          userData.sickness = messageText;
+          userInputStatus[lineUserId].step = "age";
+          await sendLineMessage(event.replyToken, "กรุณากรอกอายุของคุณ");
+        } else if (currentStep === "age") {
+          // ✅ ตรวจสอบว่าอายุที่กรอกเป็นตัวเลขหรือไม่
+          if (isNaN(messageText)) {
+            await sendLineMessage(event.replyToken, "กรุณากรอกอายุเป็นตัวเลข");
+            return res.status(200).send("OK");
+          }
+          userData.age = messageText;
+          userInputStatus[lineUserId].step = "allergic";
+          await sendLineMessage(event.replyToken, "กรุณากรอกข้อมูลอาการแพ้ (ถ้ามี)");
+        } else if (currentStep === "allergic") {
+          userData.allergic = messageText;
+          
+          // ✅ ตรวจสอบว่าผู้ใช้กรอกข้อมูลครบถ้วนหรือไม่
+          if (
+            !userData.name ||
+            !userData.email ||
+            !userData.tel ||
+            !userData.address ||
+            !userData.sickness ||
+            !userData.age ||
+            !userData.allergic
+          ) {
+            await sendLineMessage(event.replyToken, "ข้อมูลไม่ครบ กรุณาเริ่มใหม่โดยพิมพ์ 'สวัสดี'");
+            return res.status(200).send("OK");
+          }
+
+          // ✅ บันทึกข้อมูลลงในฐานข้อมูล
+          if (await insertPatientData(lineUserId, userData)) {
+            await sendLineMessage(event.replyToken, "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว");
+            delete userInputStatus[lineUserId]; // 🔹 ลบสถานะการกรอกข้อมูลจากหน่วยความจำ
+          } else {
+            await sendLineMessage(event.replyToken, "เกิดข้อผิดพลาด กรุณาลองใหม่");
+          }
+        }
+      } else {
+        // 🔹 หากข้อความที่ผู้ใช้ส่งไม่เกี่ยวข้อง ให้แนะนำให้พิมพ์ "สวัสดี" เพื่อเริ่มต้นใหม่
+        await sendLineMessage(event.replyToken, "พิมพ์ 'สวัสดี' เพื่อเริ่มกรอกข้อมูลใหม่ครับ");
+      }
+    }
+
+    res.status(200).send("OK");
+  } catch (error) {
+    // หากเกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ จะตอบกลับด้วยสถานะ 500
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
 });
 
 
