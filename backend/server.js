@@ -23,6 +23,15 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
 
 app.use(helmet());
+const winston = require("winston");
+// ตั้งค่า winston logger
+const logger = winston.createLogger({
+  level: "info",
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: "logfile.log" }),
+  ],
+});
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
   max: 100, 
@@ -48,24 +57,29 @@ const sanitizeInput = (input) => {
 
 
 
-// ✅ ทดสอบเซิร์ฟเวอร์
+//ทดสอบเซิร์ฟเวอร์
 app.get("/", (req, res) => {
   res.json({ message: "Server is online" });
 });
 
-// ✅ ดึงข้อมูลโปรไฟล์
+//ดึงข้อมูลโปรไฟล์
 app.get("/getProfile", async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+    // ตรวจสอบ JWT Token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!decoded.username) return res.status(403).json({ message: "Invalid token" });
 
+    // sanitize input
     const username = sanitizeInput(req.query.username);
+    
+    // ตรวจสอบและดึงข้อมูลจาก Supabase
     const { data, error } = await supabase
       .from("medicalpersonnel")
       .select("*")
-      .eq("username", username)
+      .eq("username", username)  // ใช้ username ที่ sanitize แล้ว
       .single();
 
     if (error) return res.status(500).json({ message: "Error fetching profile" });
@@ -76,28 +90,34 @@ app.get("/getProfile", async (req, res) => {
   }
 });
 
-//Login สำหรับ Admin และ Medical Personnel
+
+
+// Login สำหรับ Admin และ Medical Personnel
 app.post("/login", async (req, res) => {
- 
   const { username, password } = req.body;
 
-  if (!username || !password) return res.status(400).json({ message: "Missing username or password." }); 
-   
+  if (!username || !password) return res.status(400).json({ message: "Missing username or password." });
+
   try {
     const cleanUsername = sanitizeInput(username);
-    // 🔍 ตรวจสอบตาราง admins
     const tables = ["admins", "medicalpersonnel"];
 
-     for (const table of tables) {
+    for (const table of tables) {
       let { data: user, error } = await supabase.from(table).select("*").eq("username", cleanUsername).single();
       if (!error && user) {
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
-          //สร้าง JWT Token
-          const token = jwt.sign({ username: user.username, role: table }, process.env.JWT_SECRET, {
-            expiresIn: "2h",
+          // สร้าง JWT Token
+          const token = jwt.sign({ username: user.username, role: table }, process.env.JWT_SECRET, { expiresIn: "2h" });
+
+          // ตั้งค่า cookie เป็น HTTP-only
+          res.cookie("token", token, { 
+            httpOnly: true,       // ป้องกันการเข้าถึงจาก JavaScript
+            secure: process.env.NODE_ENV === 'production', // ใช้ HTTPS ใน production
+            maxAge: 2 * 60 * 60 * 1000 // ใช้เวลา 2 ชั่วโมง
           });
-          return res.json({ message: "Login Success", user: { username: user.username, role: table }, token });
+
+          return res.json({ message: "Login Success", user: { username: user.username, role: table } });
         } else {
           return res.status(401).json({ message: "Invalid password" });
         }
@@ -108,6 +128,7 @@ app.post("/login", async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error", error: err.message });
   }
 });
+
 
 
 // ✅ เพิ่ม personnel ใหม่
@@ -164,7 +185,7 @@ async function sendLineMessage(replyToken, messageText) {
       }
     );
   } catch (error) {
-    console.error("❌ Error sending message:", error);
+   
   }
 }
 
@@ -174,7 +195,7 @@ async function insertPatientData(lineUserId, data) {
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error("Error inserting patient data:", error);
+  
     return false;
   }
 }
@@ -190,14 +211,14 @@ app.post("/webhook", async (req, res) => {
     const events = req.body.events;
     if (!events || events.length === 0) return res.status(400).send("No events received");
 
-    console.log("Received events:", JSON.stringify(events, null, 2));
+  
 
     for (const event of events) {
       const lineUserId = event.source.userId;
 
       // ✅ ตรวจสอบว่าเป็นข้อความประเภท 'text' หรือไม่
       if (!event.message || event.message.type !== "text") {
-        console.log("🚨 Received a non-text message, ignoring.");
+       
         return res.status(200).send("OK");
       }
 
