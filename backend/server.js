@@ -3,7 +3,7 @@ const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const cors = require("cors");
 const axios = require("axios");
-
+const cron = require('node-cron');
 const jwt = require("jsonwebtoken");
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -11,6 +11,8 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
+const userInputStatus = {};  
+
 
 if (!process.env.SUPABASE_KEY || !process.env.LINE_ACCESS_TOKEN || !process.env.JWT_SECRET) {
   console.error("❌ Missing required environment variables!");
@@ -185,17 +187,21 @@ async function sendLineMessage(replyToken, messageText) {
       }
     );
   } catch (error) {
-   
+    console.error("Error sending message to LINE:", error);
+    throw new Error("Unable to send message to LINE");
   }
 }
 
 async function insertPatientData(lineUserId, data) {
   try {
-    const { error } = await supabase.from("patient").insert([{ lineid: lineUserId, ...data }]);
+    const { data: insertedData, error } = await supabase
+      .from("patient")
+      .insert([{ lineid: lineUserId, ...data }]);
+
     if (error) throw error;
     return true;
   } catch (error) {
-  
+    console.error("Error inserting patient data:", error.message);
     return false;
   }
 }
@@ -314,7 +320,58 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
+// ฟังก์ชันส่งข้อความไปยัง LINE OA
+async function sendScheduledMessage() {
+  try {
+    const messageText = "🔔 แจ้งเตือนอัตโนมัติ: นี่คือข้อความแจ้งเตือนทุกๆ 1 นาที!";
+    
+    // ดึงข้อมูล lineid ของผู้ใช้จากฐานข้อมูล
+    const { data: users, error } = await supabase.from("patient").select("lineid");
+    
+    if (error) {
+      console.error("❌ เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error.message);
+      return;
+    }
 
+    if (!users || users.length === 0) {
+      console.log("❌ ไม่มีผู้ใช้ในฐานข้อมูล");
+      return;
+    }
+
+    // ใช้ Set เพื่อกรอง lineid ที่ซ้ำกัน
+    const uniqueLineIds = new Set(users.map(user => user.lineid));
+
+    // ส่งข้อความแจ้งเตือนไปยังผู้ใช้แต่ละคน (ไม่ซ้ำ)
+    for (const lineid of uniqueLineIds) {
+      try {
+        await axios.post(
+          "https://api.line.me/v2/bot/message/push",
+          {
+            to: lineid,
+            messages: [{ type: "text", text: messageText }],
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${LINE_ACCESS_TOKEN}`,
+            },
+          }
+        );
+        console.log(`✅ ส่งข้อความไปยัง: ${lineid}`);
+      } catch (err) {
+        console.error(`❌ ไม่สามารถส่งข้อความไปยัง ${lineid}:`, err.message);
+      }
+    }
+  } catch (error) {
+    console.error("❌ เกิดข้อผิดพลาดในการส่งข้อความ:", error.message);
+  }
+}
+
+// ตั้งเวลาให้ส่งข้อความทุกๆ 1 นาที
+cron.schedule("* * * * *", async () => {
+  console.log("⏳ กำลังส่งข้อความแจ้งเตือนอัตโนมัติ...");
+  await sendScheduledMessage();
+});
 
 
 
