@@ -9,12 +9,15 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcrypt");
 const saltRounds = 10;
-const userInputStatus = {};  
+const userInputStatus = {};
 
-
-if (!process.env.SUPABASE_KEY || !process.env.LINE_ACCESS_TOKEN || !process.env.JWT_SECRET) {
+if (
+  !process.env.SUPABASE_KEY ||
+  !process.env.LINE_ACCESS_TOKEN ||
+  !process.env.JWT_SECRET
+) {
   console.error("❌ Missing required environment variables!");
   process.exit(1);
 }
@@ -26,7 +29,7 @@ const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
 const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
 
 app.use(helmet());
-app.set('trust proxy', 1); // เปิดใช้งาน trust proxy
+app.set("trust proxy", 1); // เปิดใช้งาน trust proxy
 const winston = require("winston");
 // ตั้งค่า winston logger
 const logger = winston.createLogger({
@@ -37,8 +40,8 @@ const logger = winston.createLogger({
   ],
 });
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 100, 
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: "Too many requests, please try again later.",
 });
 app.use(limiter);
@@ -58,9 +61,6 @@ const sanitizeInput = (input) => {
   return input.replace(/[^\w\s@.-]/gi, ""); // ลบอักขระที่อันตราย
 };
 
-
-
-
 //ทดสอบเซิร์ฟเวอร์
 app.get("/", (req, res) => {
   res.json({ message: "Server is online" });
@@ -74,19 +74,21 @@ app.get("/getProfile", async (req, res) => {
 
     // ตรวจสอบ JWT Token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded.username) return res.status(403).json({ message: "Invalid token" });
+    if (!decoded.username)
+      return res.status(403).json({ message: "Invalid token" });
 
     // sanitize input
     const username = sanitizeInput(req.query.username);
-    
+
     // ตรวจสอบและดึงข้อมูลจาก Supabase
     const { data, error } = await supabase
       .from("medicalpersonnel")
       .select("*")
-      .eq("username", username)  // ใช้ username ที่ sanitize แล้ว
+      .eq("username", username) // ใช้ username ที่ sanitize แล้ว
       .single();
 
-    if (error) return res.status(500).json({ message: "Error fetching profile" });
+    if (error)
+      return res.status(500).json({ message: "Error fetching profile" });
 
     res.json(data);
   } catch (err) {
@@ -94,34 +96,44 @@ app.get("/getProfile", async (req, res) => {
   }
 });
 
-
-
 // Login สำหรับ Admin และ Medical Personnel
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
-  if (!username || !password) return res.status(400).json({ message: "Missing username or password." });
+  if (!username || !password)
+    return res.status(400).json({ message: "Missing username or password." });
 
   try {
     const cleanUsername = sanitizeInput(username);
     const tables = ["admins", "medicalpersonnel"];
 
     for (const table of tables) {
-      let { data: user, error } = await supabase.from(table).select("*").eq("username", cleanUsername).single();
+      let { data: user, error } = await supabase
+        .from(table)
+        .select("*")
+        .eq("username", cleanUsername)
+        .single();
       if (!error && user) {
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
           // สร้าง JWT Token
-          const token = jwt.sign({ username: user.username, role: table }, process.env.JWT_SECRET, { expiresIn: "2h" });
+          const token = jwt.sign(
+            { username: user.username, role: table },
+            process.env.JWT_SECRET,
+            { expiresIn: "2h" }
+          );
 
           // ตั้งค่า cookie เป็น HTTP-only
-          res.cookie("token", token, { 
-            httpOnly: true,       // ป้องกันการเข้าถึงจาก JavaScript
-            secure: process.env.NODE_ENV === 'production', // ใช้ HTTPS ใน production
-            maxAge: 2 * 60 * 60 * 1000 // ใช้เวลา 2 ชั่วโมง
+          res.cookie("token", token, {
+            httpOnly: true, // ป้องกันการเข้าถึงจาก JavaScript
+            secure: process.env.NODE_ENV === "production", // ใช้ HTTPS ใน production
+            maxAge: 2 * 60 * 60 * 1000, // ใช้เวลา 2 ชั่วโมง
           });
 
-          return res.json({ message: "Login Success", user: { username: user.username, role: table } });
+          return res.json({
+            message: "Login Success",
+            user: { username: user.username, role: table },
+          });
         } else {
           return res.status(401).json({ message: "Invalid password" });
         }
@@ -129,47 +141,68 @@ app.post("/login", async (req, res) => {
     }
     return res.status(404).json({ message: "User not found" });
   } catch (err) {
-    return res.status(500).json({ message: "Internal Server Error", error: err.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err.message });
   }
 });
-
-
 
 // ✅ เพิ่ม personnel ใหม่
 app.post("/medical-personnel", async (req, res) => {
   try {
-    const { username, password, name, position, expertise, affiliation, email } = req.body;
-    if (!username || !password || !name || !position || !expertise || !affiliation || !email) {
-      return res.status(400).json({ message: "Please provide all required fields." });
+    const {
+      username,
+      password,
+      name,
+      position,
+      expertise,
+      affiliation,
+      email,
+    } = req.body;
+    if (
+      !username ||
+      !password ||
+      !name ||
+      !position ||
+      !expertise ||
+      !affiliation ||
+      !email
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all required fields." });
     }
 
-      // ✅ Hash รหัสผ่านก่อนบันทึก
+    // ✅ Hash รหัสผ่านก่อนบันทึก
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // เพิ่มข้อมูลลงใน Supabase
-    const { data, error } = await supabase
-      .from("medicalpersonnel")
-      .insert([
-        {
-          username,
-          password: hashedPassword, // ใช้รหัสผ่านที่ถูก hash แล้ว
-          name,
-          nickname,
-          position,
-          expertise,
-          affiliation,
-          email,
-        },
-      ]);
+    const { data, error } = await supabase.from("medicalpersonnel").insert([
+      {
+        username,
+        password: hashedPassword, // ใช้รหัสผ่านที่ถูก hash แล้ว
+        name,
+        nickname,
+        position,
+        expertise,
+        affiliation,
+        email,
+      },
+    ]);
 
-  
+    if (error)
+      return res
+        .status(500)
+        .json({ message: "Error adding personnel", error: error.message });
 
-      if (error) return res.status(500).json({ message: "Error adding personnel", error: error.message });
-
-      return res.status(201).json({ message: "Personnel added successfully", data });
-    } catch (err) {
-      return res.status(500).json({ message: "Server error", error: err.message });
-    }
+    return res
+      .status(201)
+      .json({ message: "Personnel added successfully", data });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err.message });
+  }
 });
 
 // ✅ ฟังก์ชันช่วยส่งข้อความไปยัง LINE
@@ -239,7 +272,10 @@ const handleUserMessage = async (event, messageText) => {
         break;
       case "phone":
         if (isNaN(messageText)) {
-          await sendLineMessage(event.replyToken, "กรุณากรอกเฉพาะตัวเลขสำหรับเบอร์โทรศัพท์");
+          await sendLineMessage(
+            event.replyToken,
+            "กรุณากรอกเฉพาะตัวเลขสำหรับเบอร์โทรศัพท์"
+          );
           return;
         }
         userData.tel = messageText;
@@ -263,27 +299,45 @@ const handleUserMessage = async (event, messageText) => {
         }
         userData.age = messageText;
         userInputStatus[lineUserId].step = "allergic";
-        await sendLineMessage(event.replyToken, "กรุณากรอกข้อมูลอาการแพ้ (ถ้ามี)");
+        await sendLineMessage(
+          event.replyToken,
+          "กรุณากรอกข้อมูลอาการแพ้ (ถ้ามี)"
+        );
         break;
       case "allergic":
         userData.allergic = messageText;
-        if (Object.values(userData).some(field => !field)) {
-          await sendLineMessage(event.replyToken, "ข้อมูลไม่ครบ กรุณาเริ่มใหม่โดยพิมพ์ 'สวัสดี'");
+        if (Object.values(userData).some((field) => !field)) {
+          await sendLineMessage(
+            event.replyToken,
+            "ข้อมูลไม่ครบ กรุณาเริ่มใหม่โดยพิมพ์ 'สวัสดี'"
+          );
           return;
         }
 
         if (await insertPatientData(lineUserId, userData)) {
-          await sendLineMessage(event.replyToken, "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว");
-          delete userInputStatus[lineUserId]; 
+          await sendLineMessage(
+            event.replyToken,
+            "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว"
+          );
+          delete userInputStatus[lineUserId];
         } else {
-          await sendLineMessage(event.replyToken, "เกิดข้อผิดพลาด กรุณาลองใหม่");
+          await sendLineMessage(
+            event.replyToken,
+            "เกิดข้อผิดพลาด กรุณาลองใหม่"
+          );
         }
         break;
       default:
-        await sendLineMessage(event.replyToken, "พิมพ์ 'สวัสดี' เพื่อเริ่มกรอกข้อมูลใหม่ครับ");
+        await sendLineMessage(
+          event.replyToken,
+          "พิมพ์ 'สวัสดี' เพื่อเริ่มกรอกข้อมูลใหม่ครับ"
+        );
     }
   } else {
-    await sendLineMessage(event.replyToken, "พิมพ์ 'สวัสดี' เพื่อเริ่มกรอกข้อมูลใหม่ครับ");
+    await sendLineMessage(
+      event.replyToken,
+      "พิมพ์ 'สวัสดี' เพื่อเริ่มกรอกข้อมูลใหม่ครับ"
+    );
   }
 };
 
@@ -300,7 +354,8 @@ app.post("/webhook", async (req, res) => {
 
     // ✅ รับข้อมูล events จาก body
     const events = req.body.events;
-    if (!events || events.length === 0) return res.status(400).send("No events received");
+    if (!events || events.length === 0)
+      return res.status(400).send("No events received");
 
     for (const event of events) {
       const messageText = event.message?.text?.trim();
@@ -313,7 +368,94 @@ app.post("/webhook", async (req, res) => {
 
     res.status(200).send("OK");
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+});
+
+// API สำหรับค้นหาผู้ป่วย
+app.get("/search-patient", async (req, res) => {
+  const { name } = req.query;
+
+  if (!name) {
+    return res.status(400).send("Name parameter is required");
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("patient")
+      .select("*")
+      .ilike("name", `%${name}%`); // ค้นหาชื่อผู้ป่วยแบบไม่คำนึงถึงตัวพิมพ์ใหญ่
+
+    if (error) {
+      return res.status(500).send(error.message);
+    }
+
+    res.status(200).json(data); // ส่งข้อมูลผู้ป่วยที่ค้นหา
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// API สำหรับตั้งค่าการนัดหมาย
+app.post("/set-appointment", async (req, res) => {
+  try {
+    const { name, lineid, appointment_date, reminder_time } = req.body;
+
+    if (!name || !lineid || !appointment_date || !reminder_time) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing required fields" });
+    }
+
+    // 🔍 1. ค้นหา patient_id จาก name + lineid
+    const { data: patientData, error: patientError } = await supabase
+      .from("patient")
+      .select("patient_id")
+      .eq("lineid", lineid)
+      .eq("name", name)
+      .limit(1)
+      .single();
+
+    if (patientError || !patientData) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+        error: patientError,
+      });
+    }
+
+    const patient_id = patientData.patient_id;
+
+    // 🔄 2. อัปเดตข้อมูลการนัดหมาย
+    const { data, error } = await supabase
+      .from("patient")
+      .update({
+        appointment_date: appointment_date,
+        reminder_time: reminder_time,
+      })
+      .eq("patient_id", patient_id)
+      .select();
+
+    if (error) {
+      console.error("Supabase Error:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Database error", error });
+    }
+    console.log("Received data:", req.body); 
+
+    return res.json({
+      success: true,
+      message: "Appointment updated successfully",
+      data,
+    });
+  } catch (err) {
+    console.error("Server Error:", err);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: err.message });
   }
 });
 
@@ -321,4 +463,3 @@ app.post("/webhook", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
-
