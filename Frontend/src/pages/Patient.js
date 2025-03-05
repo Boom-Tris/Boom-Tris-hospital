@@ -1,212 +1,543 @@
-import React, { useState, useMemo } from 'react';
-import { Typography, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Avatar, IconButton } from '@mui/material';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { Typography, TextField, IconButton, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { Box, Button, Grid, Paper } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; 
-import { faTrashAlt, faCog, faEdit } from '@fortawesome/free-solid-svg-icons'; 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrashAlt, faCog , faSearch  } from '@fortawesome/free-solid-svg-icons';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import '../components/Table.css';
 
-const initialRows = [
-  { id: 1, name: 'P', age: 25, email: 'cell1@example.com', address: '123 Street A', sickness: 'Flu', LINE_ID: 'None', imageUrl: 'https://randomuser.me/api/portraits/men/1.jpg' },
-  { id: 2, name: 'H', age: 30, email: 'cell2@example.com', address: '456 Street B', sickness: 'Cold', LINE_ID: 'Pollen', imageUrl: 'https://randomuser.me/api/portraits/women/2.jpg' },
-  { id: 3, name: 'L', age: 28, email: 'cell3@example.com', address: '789 Street C', sickness: 'Asthma', LINE_ID: 'Dust', imageUrl: 'https://randomuser.me/api/portraits/men/3.jpg' },
-  { id: 4, name: 'C', age: 35, email: 'cell4@example.com', address: '321 Street D', sickness: 'Diabetes', LINE_ID: 'Peanuts', imageUrl: 'https://randomuser.me/api/portraits/women/4.jpg' },
-  { id: 5, name: 'T', age: 40, email: 'cell5@example.com', address: '654 Street E', sickness: 'Hypertension', LINE_ID: 'Seafood', imageUrl: 'https://randomuser.me/api/portraits/men/5.jpg' },
-];
+// 🔹 เชื่อมต่อกับ Supabase
+const supabaseUrl = "https://wxsaarugacjbneliilek.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4c2FhcnVnYWNqYm5lbGlpbGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MTA3MjEsImV4cCI6MjA1NTE4NjcyMX0.NbNgb_oHFxNuwjnjaIEjIIhPvsowQ5nYE5hzuMtQeK0"; 
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// 🗓️ ฟังก์ชันแปลง `appointment_date` เป็น `DD/MM/YYYY`
+const formatDate = (dateString) => {
+  if (!dateString) return "ไม่ได้นัดหมาย"; // ถ้าไม่มีวันนัดหมาย
+  const date = new Date(dateString);
+  return date.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
+};
 
 const Patient = () => {
-  const [rows, setRows] = useState(initialRows);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [infoDialog, setInfoDialog] = useState(false);
-  const [selectedRow, setSelectedRow] = useState(null);
-  const [editing, setEditing] = useState(false);
-  const [newRow, setNewRow] = useState({ name: '', dob: '', email: '', address: '', sickness: '', LINE_ID: '', id: '', imageUrl: '' });
+  const [rows, setRows] = useState([]);
   const [search, setSearch] = useState("");
+  const [openDialog, setOpenDialog] = useState(false);
+  const [newPatient, setNewPatient] = useState({
+    firstName: '',
+    lastName: '',
+    age: '',
+    lineId: '',
+    allergic: '',
+    sickness: '',
+    address: '',
+    appointment_date: null // ✅ เพิ่มฟิลด์สำหรับนัดหมาย
+  });
+  
+  
+const [openEditDialog, setOpenEditDialog] = useState(false);
+const [selectedPatient, setSelectedPatient] = useState(null);
+const [isEditMode, setIsEditMode] = useState(false);
+const [openViewDialog, setOpenViewDialog] = useState(false);
+const [selectedViewPatient, setSelectedViewPatient] = useState(null);
 
-  // Filter rows based on search term, memoized for performance
+
+
+  // ✅ ดึงข้อมูลจาก Supabase
+  useEffect(() => {
+    const fetchPatients = async () => {
+      const { data, error } = await supabase.from('patient').select('*');
+  
+      if (error) {
+        console.error("Error fetching patients:", error);
+      } else {
+        console.log("✅ Data from Supabase:", data); // 🔍 เช็คข้อมูลที่ได้
+        setRows(data);
+      }
+    };
+  
+    fetchPatients();
+  }, []);
+  
+  // ✅ ค้นหาข้อมูลใน DataGrid
   const filteredRows = useMemo(() => {
     return rows.filter((row) =>
       Object.values(row).some((value) =>
-        value.toString().toLowerCase().includes(search.toLowerCase())
+        value?.toString().toLowerCase().includes(search.toLowerCase())
       )
     );
   }, [rows, search]);
 
-  const calculateAge = (dob) => {
-    const [day, month, year] = dob.split('/').map(Number);
-    const today = new Date();
-    const birthDate = new Date(year, month - 1, day);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+  // ✅ ฟังก์ชันลบข้อมูลออกจาก Supabase
+  const handleDeleteRow = async (id) => {
+    const { error } = await supabase.from('patient').delete().eq('patient_id', id);
+
+    if (error) {
+      console.error("Error deleting patient:", error);
+    } else {
+      setRows(rows.filter((row) => row.patient_id !== id));
     }
-    return age;
   };
 
-  const handleAddRow = () => {
-    const age = calculateAge(newRow.dob);
-    const newId = rows.length ? Math.max(...rows.map(row => row.id)) + 1 : 1;
-    setRows([...rows, { ...newRow, age, id: newId }]);
-    handleCloseDialog();
+  const handleEditRow = (patient) => {
+    setSelectedPatient(patient);
+    setOpenEditDialog(true);
+  };
+  
+  const handleViewRow = (patient) => {
+    setSelectedViewPatient(patient);
+    setOpenViewDialog(true);
+  };
+  
+  const handleAddPatient = async () => {
+    const fullName = `${newPatient.firstName} ${newPatient.lastName}`;
+    const formattedDate = newPatient.appointment_date
+      ? newPatient.appointment_date.toISOString().split('T')[0] // ✅ แปลงเป็น YYYY-MM-DD
+      : null;
+  
+    const newPatientData = {
+      name: fullName,
+      age: parseInt(newPatient.age, 10),
+      lineid: newPatient.lineId,
+      allergic: newPatient.allergic,
+      sickness: newPatient.sickness,
+      address: newPatient.address,
+      tel: newPatient.tel,
+      email: newPatient.email,
+      appointment_date: formattedDate
+    };
+  
+    const { data, error } = await supabase.from('patient').insert([newPatientData]).select("*");
+  
+    if (error) {
+      console.error("Error inserting patient:", error);
+    } else {
+      // ✅ อัปเดตตารางทันทีโดยไม่ต้อง refresh
+      setRows([...rows, data[0]]);
+      
+      // ✅ ปิด Dialog และเคลียร์ฟอร์ม
+      setOpenDialog(false);
+      setNewPatient({
+        firstName: '',
+        lastName: '',
+        age: '',
+        lineId: '',
+        allergic: '',
+        sickness: '',
+        address: '',
+        tel: '',
+        email:'',
+        appointment_date: null
+      });
+    }
   };
 
-  const handleDeleteRow = (id) => {
-    setRows((prevRows) => prevRows.filter((row) => row.id !== id));
+  const handleUpdatePatient = async () => {
+    if (!selectedPatient) return;
+  
+    const { error } = await supabase
+      .from('patient')
+      .update({
+        name: selectedPatient.name,
+        age: parseInt(selectedPatient.age, 10) || null,
+        lineid: selectedPatient.lineid,
+        allergic: selectedPatient.allergic,
+        sickness: selectedPatient.sickness,
+        address: selectedPatient.address,
+        appointment_date: selectedPatient.appointment_date
+      })
+      .eq('patient_id', selectedPatient.patient_id);
+  
+    if (error) {
+      console.error("Error updating patient:", error);
+    } else {
+      setRows(rows.map(row => row.patient_id === selectedPatient.patient_id ? selectedPatient : row));
+      setOpenEditDialog(false);
+    }
   };
+  
+  
+  
+  
 
- 
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setNewRow({ name: '', dob: '', email: '', address: '', sickness: '', LINE_ID: '', id: '', imageUrl: '' });
-  };
-
-  const handleInfoDialogClose = () => {
-    setInfoDialog(false);
-    setSelectedRow(null);
-  };
-
-  const handleDobChange = (e) => {
-    let value = e.target.value.replace(/[^0-9]/g, '');
-    if (value.length > 2) value = value.slice(0, 2) + '/' + value.slice(2);
-    if (value.length > 5) value = value.slice(0, 5) + '/' + value.slice(5);
-    if (value.length > 10) value = value.slice(0, 10); // Limit to DD/MM/YYYY format
-    setNewRow(prev => ({ ...prev, dob: value }));
-  };
-
+  // ✅ กำหนด Columns ของ DataGrid
   const columns = [
-    
-    { field: 'id', headerName: 'ID', width: 100, headerClassName: 'column-header', cellClassName: 'column-cell' },
-  { 
-    field: 'name', 
-    headerName: 'ชื่อ-นามสกุล', 
-    width: 150, 
-    headerClassName: 'column-header', 
-    cellClassName: 'column-cell', 
-    renderCell: (params) => (
-      <div className="column-cell">  <Avatar src={params.row.imageUrl} alt={params.row.name} /> {params.row.name}</div>
-    )
-  },
-     
-    
-  { 
-    field: 'age', 
-    headerName: 'อายุ', 
-    width: 100, 
-    headerClassName: 'column-header column-age', 
-    cellClassName: 'column-cell column-age' 
-  },
-  { 
-    field: 'email', 
-    headerName: 'อีเมล', 
-    width: 200, 
-    headerClassName: 'column-header column-email', 
-    cellClassName: 'column-cell column-email' 
-  },
-  { 
-    field: 'address', 
-    headerName: 'ที่อยู่', 
-    width: 250, 
-    headerClassName: 'column-header column-address', 
-    cellClassName: 'column-cell column-address' 
-  },
-  { 
-    field: 'sickness', 
-    headerName: 'โรคประจำตัว', 
-    width: 150, 
-    headerClassName: 'column-header column-sickness', 
-    cellClassName: 'column-cell column-sickness' 
-  },
-  { 
-    field: 'LINE_ID', 
-    headerName: 'LINE ID', 
-    width: 150, 
-    headerClassName: 'column-header column-allergic', 
-    cellClassName: 'column-cell column-allergic' 
-  },
+    { field: 'patient_id', headerName: 'ID', width: 30 },
     {
-      field: 'status',
-      headerName: 'สถานะ',
-      width: 150,
+      field: 'view',
+      headerName: '',
+      width: 60,
       renderCell: (params) => (
-        <IconButton color="error" onClick={() => handleDeleteRow(params.row.id)}>
-          <FontAwesomeIcon icon={faTrashAlt} />
+        <IconButton color="primary" onClick={() => handleViewRow(params.row)}>
+          <FontAwesomeIcon icon={faSearch} />
         </IconButton>
       ),
+    },
+    
+    
+    { 
+      field: 'name', 
+      headerName: 'ชื่อ-นามสกุล', 
+      width: 200, 
+      renderCell: (params) => params.row.name ? params.row.name : "ไม่ระบุ"
+    },
+    { field: 'age', headerName: 'อายุ', width: 60 },
+    { field: 'tel', headerName: 'เบอร์โทร', width: 80 },
+    { field: 'email', headerName: 'อีเมล', width: 30 },
+    { field: 'address', headerName: 'ที่อยู่', width: 250 },
+    { field: 'sickness', headerName: 'โรคประจำตัว', width: 150 },
+    { field: 'allergic', headerName: 'อาการแพ้', width: 150 },
+    { field: 'status', headerName: 'สถานะ', width: 80 },
+    {
+      field: 'appointment_date',
+      headerName: 'Appointment',
+      width: 100,
+      renderCell: (params) => formatDate(params.value) 
+    },
+    {
+      field: 'actions',
+      headerName: 'จัดการ',
+      width: 100,
+      renderCell: (params) => (
+        <>
+          <IconButton color="primary" onClick={() => handleEditRow(params.row)}>
+            <FontAwesomeIcon icon={faCog} />
+          </IconButton>
+          <IconButton color="error" onClick={() => handleDeleteRow(params.row.patient_id)}>
+            <FontAwesomeIcon icon={faTrashAlt} />
+          </IconButton>
+        </>
+      ),
     }
+    
   ];
 
   return (
     <div>
-      <Typography variant="h3" gutterBottom className="typography-header">Patient</Typography>
-      <Box className="divider" />
+      <Typography variant="h3" gutterBottom>Patient</Typography>
 
-      <Box className="data-grid-container">
-        <Box className="top-bar">
-          <Box className="search-box">
-            <TextField label="Search" variant="outlined" size="small" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </Box>
+      {/* ✅ จัดปุ่ม NEW, EDIT ให้อยู่ขวา และ Search Box อยู่ตรงกลาง */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        {/* Search Box ตรงกลาง */}
+        <TextField 
+          label="Search" 
+          variant="outlined" 
+          size="small" 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+          sx={{ flexGrow: 1, marginRight: '20px' }}
+        />
 
-          <Box className="action-buttons">
-            <Button variant="contained" color="primary" startIcon={<FontAwesomeIcon icon={faEdit} />} onClick={() => setEditing(!editing)}>
-              {editing ? 'Save' : 'Edit'}
-            </Button>
-            <Button variant="contained" color="info" startIcon={<FontAwesomeIcon icon={faCog} />} onClick={() => console.log('Settings clicked')} />
-          </Box>
-        </Box>
+        {/* ปุ่มอยู่ด้านขวา */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Button
+            variant="contained"
+            sx={{ bgcolor: '#6C63FF', color: 'white', fontWeight: 'bold', borderRadius: '8px' }}
+            onClick={() => setOpenDialog(true)}
+          >
+            NEW
+          </Button>
 
-        <DataGrid className="Table" rows={filteredRows} columns={columns} pageSize={5} rowsPerPageOptions={[5, 10, 15]} checkboxSelection />
+          <Button
+          variant="contained"
+          sx={{ bgcolor: isEditMode ? 'gray' : '#6EC7E2', color: 'white', fontWeight: 'bold', borderRadius: '8px' }}
+          onClick={() => setIsEditMode(!isEditMode)}
+>
+          {isEditMode ? "CANCEL" : "EDIT"}
+          </Button>
 
-        <Dialog open={openDialog} onClose={handleCloseDialog}>
-          <DialogTitle>Add New Patient</DialogTitle>
-          <DialogContent>
-            <Box className="dialog-content">
-              <TextField label="Name" fullWidth margin="dense" value={newRow.name} onChange={(e) => setNewRow(prev => ({ ...prev, name: e.target.value }))} />
-              <TextField label="Date of Birth (DD/MM/YYYY)" fullWidth margin="dense" value={newRow.dob} onChange={handleDobChange} inputProps={{ inputMode: 'numeric', maxLength: 10 }} />
-              <TextField label="Email" fullWidth margin="dense" value={newRow.email} onChange={(e) => setNewRow(prev => ({ ...prev, email: e.target.value }))} />
-              <TextField label="Address" fullWidth margin="dense" value={newRow.address} onChange={(e) => setNewRow(prev => ({ ...prev, address: e.target.value }))} />
-              <TextField label="Sickness" fullWidth margin="dense" value={newRow.sickness} onChange={(e) => setNewRow(prev => ({ ...prev, sickness: e.target.value }))} />
-              <TextField label="LINE" fullWidth margin="dense" value={newRow.LINE_ID} onChange={(e) => setNewRow(prev => ({ ...prev, LINE_ID: e.target.value }))} />
-              <TextField label="Image URL" fullWidth margin="dense" value={newRow.imageUrl} onChange={(e) => setNewRow(prev => ({ ...prev, imageUrl: e.target.value }))} />
-            </Box>
-          </DialogContent>
-          <DialogActions className="dialog-actions">
-            <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button onClick={handleAddRow} color="primary">Add</Button>
-          </DialogActions>
-        </Dialog>
 
-        <Dialog open={infoDialog} onClose={handleInfoDialogClose} maxWidth="md" fullWidth>
-          <DialogTitle>User Information</DialogTitle>
-          <DialogContent>
-            {selectedRow && (
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={8}>
-                  <Paper className="user-info-paper">
-                    <Typography variant="body1"><strong>ID:</strong> {selectedRow.id}</Typography>
-                    <Typography variant="body1"><strong>Name:</strong> {selectedRow.name}</Typography>
-                    <Typography variant="body1"><strong>Age:</strong> {selectedRow.age}</Typography>
-                    <Typography variant="body1"><strong>Email:</strong> {selectedRow.email}</Typography>
-                    <Typography variant="body1"><strong>Address:</strong> {selectedRow.address}</Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <Paper className="user-info-paper">
-                    <Typography variant="subtitle1" gutterBottom>Sickness</Typography>
-                    <Typography variant="body1">{selectedRow.sickness}</Typography>
-                    <Typography variant="subtitle1" gutterBottom>LINE</Typography>
-                    <Typography variant="body1">{selectedRow.LINE_ID}</Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleInfoDialogClose}>Close</Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
+          <IconButton>
+            <FontAwesomeIcon icon={faCog} style={{ fontSize: '20px', color: 'gray' }} />
+          </IconButton>
+        </div>
+      </div>
+
+      {/* ✅ Dialog สำหรับเพิ่มข้อมูล */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+  <DialogTitle>เพิ่มผู้ป่วยใหม่</DialogTitle>
+  <DialogContent>
+    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+      <TextField 
+        label="ชื่อจริง" 
+        value={newPatient.firstName} 
+        onChange={(e) => setNewPatient({ ...newPatient, firstName: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+      <TextField 
+        label="นามสกุล" 
+        value={newPatient.lastName} 
+        onChange={(e) => setNewPatient({ ...newPatient, lastName: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+      <TextField 
+        label="อายุ"
+        value={newPatient.age} 
+        onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value.replace(/\D/g, '') })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+        inputProps={{ inputMode: 'numeric' }}
+        sx={{ bgcolor: '#f0f0f0' }}
+      />
+      <TextField 
+        label="LINE ID" 
+        value={newPatient.lineId} 
+        onChange={(e) => setNewPatient({ ...newPatient, lineId: e.target.value })} 
+        fullWidth 
+      />
+      <TextField 
+        label="อาการแพ้" 
+        value={newPatient.allergic} 
+        onChange={(e) => setNewPatient({ ...newPatient, allergic: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+      <TextField 
+        label="โรคประจำตัว" 
+        value={newPatient.sickness} 
+        onChange={(e) => setNewPatient({ ...newPatient, sickness: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+    </Box>
+
+
+    <TextField 
+      label="เบอร์โทรศัพท์" 
+      value={newPatient.tel} 
+      onChange={(e) => setNewPatient({ ...newPatient, tel: e.target.value })} 
+      variant="outlined"
+      slotProps={{ inputLabel: { shrink: true } }}
+      fullWidth 
+      sx={{ marginTop: 2 }}
+    />
+
+<TextField 
+      label="อีเมล" 
+      value={newPatient.email} 
+      onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })} 
+      variant="outlined"
+      slotProps={{ inputLabel: { shrink: true } }}
+      fullWidth 
+      sx={{ marginTop: 2 }}
+    />
+    <TextField 
+      label="Address" 
+      value={newPatient.address} 
+      onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })} 
+      variant="outlined"
+      slotProps={{ inputLabel: { shrink: true } }}
+      fullWidth 
+      sx={{ marginTop: 2 }}
+    />
+
+    
+<Box sx={{ mt: 4 }}>
+
+<LocalizationProvider dateAdapter={AdapterDateFns}>
+<TextField
+    label="เบอร์โทรศัพท์"
+    value={newPatient.tel}
+    onChange={(e) => setNewPatient({ ...newPatient, tel: e.target.value })}
+    variant="outlined"
+    slotProps={{ inputLabel: { shrink: true } }}
+    fullWidth
+  />
+</LocalizationProvider>
+
+
+  <LocalizationProvider dateAdapter={AdapterDateFns}>
+    <DatePicker
+      label="เลือกวันนัดหมาย"
+      value={newPatient.appointment_date}
+      onChange={(date) => setNewPatient({ ...newPatient, appointment_date: date })}
+      renderInput={(params) => <TextField {...params} fullWidth />}
+    />
+  </LocalizationProvider>
+</Box>
+
+
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setOpenDialog(false)}>CANCEL</Button>
+    <Button onClick={handleAddPatient} color="primary">ADD</Button>
+  </DialogActions>
+</Dialog>
+
+
+      {/* ตารางข้อมูล */}
+      <DataGrid 
+        rows={filteredRows} 
+        columns={columns} 
+        pageSize={5} 
+        rowsPerPageOptions={[5, 10, 15]} 
+        checkboxSelection 
+        getRowId={(row) => row.patient_id} // ✅ ใช้ patient_id เป็น ID
+      />
+
+<Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
+  <DialogTitle>Edit Patient</DialogTitle>
+  <DialogContent>
+  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, alignItems: 'start' }}>
+
+      <TextField 
+        label="ชื่อ-นามสกุล" 
+        value={selectedPatient?.name || ''} 
+        onChange={(e) => setSelectedPatient({ ...selectedPatient, name: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+      <TextField 
+        label="อายุ" 
+        value={selectedPatient?.age || ''} 
+        onChange={(e) => setSelectedPatient({ ...selectedPatient, age: e.target.value.replace(/\D/g, '') })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+      <TextField 
+        label="LINE ID" 
+        value={selectedPatient?.lineid || ''} 
+        onChange={(e) => setSelectedPatient({ ...selectedPatient, lineid: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+      <TextField 
+        label="อาการแพ้" 
+        value={selectedPatient?.allergic || ''} 
+        onChange={(e) => setSelectedPatient({ ...selectedPatient, allergic: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+      <TextField 
+        label="โรคประจำตัว" 
+        value={selectedPatient?.sickness || ''} 
+        onChange={(e) => setSelectedPatient({ ...selectedPatient, sickness: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
+      <TextField 
+        label="ที่อยู่" 
+        value={selectedPatient?.address || ''} 
+        onChange={(e) => setSelectedPatient({ ...selectedPatient, address: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+
+        fullWidth 
+      />
+    </Box>
+
+    <Box sx={{ mt: 3 }}>
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <DatePicker
+          label="เลือกวันนัดหมาย"
+          value={selectedPatient?.appointment_date}
+          onChange={(date) => setSelectedPatient({ ...selectedPatient, appointment_date: date })}
+          renderInput={(params) => <TextField {...params} fullWidth />}
+        />
+      </LocalizationProvider>
+    </Box>
+  </DialogContent>
+
+  <DialogActions>
+    <Button onClick={() => setOpenEditDialog(false)}>CANCEL</Button>
+    <Button onClick={handleUpdatePatient} color="primary">SAVE</Button>
+  </DialogActions>
+</Dialog>
+
+<Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)}>
+  <DialogTitle sx={{ position: 'relative', textAlign: 'center' }}>
+    ข้อมูลผู้ป่วย
+    <IconButton 
+      onClick={() => setOpenViewDialog(false)} 
+      sx={{ 
+        position: 'absolute', 
+        left: 10,  // ✅ ชิดซ้าย
+        top: 10,   // ✅ ชิดด้านบน
+      }}
+    >
+      ❌
+    </IconButton>
+  </DialogTitle>
+  <DialogContent>
+    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+      <TextField 
+        label="ชื่อ-นามสกุล" 
+        value={selectedViewPatient?.name || ''} 
+        fullWidth 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }} 
+      />
+      <TextField 
+        label="อายุ" 
+        value={selectedViewPatient?.age || ''} 
+        fullWidth 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}       />
+      <TextField 
+        label="LINE ID" 
+        value={selectedViewPatient?.lineid || ''} 
+        fullWidth 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}       />
+      <TextField 
+        label="อาการแพ้" 
+        value={selectedViewPatient?.allergic || ''} 
+        fullWidth 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}       />
+      <TextField 
+        label="โรคประจำตัว" 
+        value={selectedViewPatient?.sickness || ''} 
+        fullWidth 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}       />
+      <TextField 
+        label="ที่อยู่" 
+        value={selectedViewPatient?.address || ''} 
+        fullWidth 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}       />
+      <TextField 
+        label="เบอร์โทรศัพท์" 
+        value={selectedViewPatient?.tel || ''} 
+        fullWidth 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}       />
+    </Box>
+
+    <Box sx={{ mt: 3 }}>
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <DatePicker
+          label="วันนัดหมาย"
+          value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
+          disabled={true} // ✅ ปิดการเลือกวัน
+          renderInput={(params) => (
+            <TextField 
+              {...params} 
+              fullWidth 
+              variant="outlined"
+              slotProps={{ inputLabel: { shrink: true } }}               value={selectedViewPatient?.appointment_date ? params.value : "ยังไม่ได้นัด"} 
+            />
+          )}
+        />
+      </LocalizationProvider>
+    </Box>
+  </DialogContent>
+</Dialog>
+
     </div>
   );
 };
