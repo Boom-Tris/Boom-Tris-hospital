@@ -303,7 +303,9 @@ const Patient = () => {
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
   <DialogTitle>เพิ่มผู้ป่วยใหม่</DialogTitle>
   <DialogContent>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
+
+
       <TextField 
         label="ชื่อจริง" 
         value={newPatient.firstName} 
@@ -433,7 +435,11 @@ const Patient = () => {
 <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
   <DialogTitle>Edit Patient</DialogTitle>
   <DialogContent>
-  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, alignItems: 'start' }}>
+  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
+
+
+
+
 
       <TextField 
         label="ชื่อ-นามสกุล" 
@@ -519,7 +525,8 @@ const Patient = () => {
     </IconButton>
   </DialogTitle>
   <DialogContent>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
+
       <TextField 
         label="ชื่อ-นามสกุล" 
         value={selectedViewPatient?.name || ''} 
