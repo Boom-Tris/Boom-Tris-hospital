@@ -34,6 +34,10 @@ const Patient = () => {
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedViewPatient, setSelectedViewPatient] = useState(null);
 
+
+ // สำหรับ Dialog การยืนยันการลบ
+ const [openConfirmDeleteDialog, setOpenConfirmDeleteDialog] = useState(false);
+ const [patientToDelete, setPatientToDelete] = useState(null);
   const fetchPatients = async () => {
     try {
       const response = await fetch('http://localhost:3001/all-patients');
@@ -60,7 +64,23 @@ const Patient = () => {
     fetchPatients();
   }, []);
 
-  
+  const confirmDeletePatient = async () => {
+    try {
+      const response = await fetch(`http://localhost:3001/delete-patient/${patientToDelete}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setRows((prevRows) => prevRows.filter((row) => row.patient_id !== patientToDelete));
+        setOpenConfirmDeleteDialog(false);
+      } else {
+        const data = await response.json();
+        console.error('Error deleting patient:', data.message);
+      }
+    } catch (error) {
+      console.error('Server error:', error);
+    }
+  };
   
 
   // ✅ ค้นหาข้อมูลใน DataGrid
@@ -75,23 +95,11 @@ const Patient = () => {
   }, [rows, search]);
 
   // ✅ ฟังก์ชันลบข้อมูลออกจาก Supabase
-  const handleDeleteRow = async (id) => {
-    try {
-      const response = await fetch(`http://localhost:3001/delete-patient/${id}`, {
-        method: 'DELETE',
-      });
-  
-      if (response.ok) {
-        // ลบแถวจาก `rows` โดยไม่ต้องโหลดข้อมูลใหม่จากเซิร์ฟเวอร์
-        setRows((prevRows) => prevRows.filter((row) => row.patient_id !== id));
-      } else {
-        const data = await response.json();
-        console.error('Error deleting patient:', data.message);
-      }
-    } catch (error) {
-      console.error('Server error:', error);
-    }
+  const handleDeleteRow = (patientId) => {
+    setPatientToDelete(patientId);  // Set the patient to delete
+    setOpenConfirmDeleteDialog(true);  // Open the confirmation dialog
   };
+  
   
 
   const handleEditRow = (patient) => {
@@ -103,7 +111,10 @@ const Patient = () => {
     setSelectedViewPatient(patient);
     setOpenViewDialog(true);
   };
-
+  const handleCancelDelete = () => {
+    setOpenConfirmDeleteDialog(false); // Close the dialog
+  };
+  
   const handleAddPatient = async () => {
     try {
       const response = await fetch('http://localhost:3001/add-patient', {
@@ -220,6 +231,35 @@ const Patient = () => {
           <IconButton color="error" onClick={() => handleDeleteRow(params.row.patient_id)}>
             <FontAwesomeIcon icon={faTrashAlt} />
           </IconButton>
+         
+          <DataGrid
+  rows={filteredRows} 
+  columns={columns}
+  pageSize={5}
+  rowsPerPageOptions={[5]}
+  getRowId={(row) => row.patient_id}
+ 
+/>
+
+      {/* Dialog สำหรับยืนยันการลบ */}
+      <Dialog
+        open={openConfirmDeleteDialog}
+        onClose={handleCancelDelete}
+        aria-labelledby="confirm-delete-dialog-title"
+      >
+        <DialogTitle id="confirm-delete-dialog-title">ยืนยันการลบ</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">คุณแน่ใจว่าจะลบข้อมูลผู้ป่วยนี้หรือไม่?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete} color="primary">
+            ยกเลิก
+          </Button>
+          <Button onClick={confirmDeletePatient} color="error">
+            ลบ
+          </Button>
+        </DialogActions>
+      </Dialog>
         </>
       ),
     },
@@ -238,9 +278,10 @@ const Patient = () => {
           size="small" 
           value={search} 
           onChange={(e) => setSearch(e.target.value)} 
-          sx={{ flexGrow: 1, marginRight: '20px' }}
+             className="searchTextField"
+       
+      
         />
-
         {/* ปุ่มอยู่ด้านขวา */}
         <div style={{ display: 'flex', gap: '10px' }}>
           <Button
@@ -386,6 +427,7 @@ const Patient = () => {
         rowsPerPageOptions={[5, 10, 15]} 
         checkboxSelection 
         getRowId={(row) => row.patient_id} // ✅ ใช้ patient_id เป็น ID
+         className="dataGridStyle"
       />
 
 <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>

@@ -229,3 +229,16 @@ background: white;
 
   color: #555; 
 }
+
+
+.dataGridStyle {
+  background-color: white;
+}
+
+.searchTextField {
+  
+ 
+  
+  width: 50%;
+  background-color: white;
+}

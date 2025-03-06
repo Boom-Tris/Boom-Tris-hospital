@@ -511,6 +511,8 @@ try {
   return res.status(500).json({ message: "Server error", error: err.message });
 }
 });
+
+
 app.post("/add-patient", async (req, res) => {
 try {
   const { name, age, lineid, allergic, sickness, address, tel, email, appointment_date } = req.body;
