@@ -1,17 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Typography, TextField, IconButton, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashAlt, faCog , faSearch  } from '@fortawesome/free-solid-svg-icons';
+import { faTrashAlt, faCog, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import '../components/Table.css';
-
-// 🔹 เชื่อมต่อกับ Supabase
-const supabaseUrl = "https://wxsaarugacjbneliilek.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4c2FhcnVnYWNqYm5lbGlpbGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MTA3MjEsImV4cCI6MjA1NTE4NjcyMX0.NbNgb_oHFxNuwjnjaIEjIIhPvsowQ5nYE5hzuMtQeK0"; 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // 🗓️ ฟังก์ชันแปลง `appointment_date` เป็น `DD/MM/YYYY`
 const formatDate = (dateString) => {
@@ -32,135 +26,161 @@ const Patient = () => {
     allergic: '',
     sickness: '',
     address: '',
-    appointment_date: null // ✅ เพิ่มฟิลด์สำหรับนัดหมาย
+    appointment_date: null, // ✅ เพิ่มฟิลด์สำหรับนัดหมาย
   });
-  
-  
-const [openEditDialog, setOpenEditDialog] = useState(false);
-const [selectedPatient, setSelectedPatient] = useState(null);
-const [isEditMode, setIsEditMode] = useState(false);
-const [openViewDialog, setOpenViewDialog] = useState(false);
-const [selectedViewPatient, setSelectedViewPatient] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [openViewDialog, setOpenViewDialog] = useState(false);
+  const [selectedViewPatient, setSelectedViewPatient] = useState(null);
 
+  const fetchPatients = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/all-patients');
+      const data = await response.json();
 
-
-  // ✅ ดึงข้อมูลจาก Supabase
-  useEffect(() => {
-    const fetchPatients = async () => {
-      const { data, error } = await supabase.from('patient').select('*');
-  
-      if (error) {
-        console.error("Error fetching patients:", error);
+      if (response.ok) {
+       
+        // เพิ่มฟิลด์ id สำหรับแต่ละแถว
+        const updatedRows = data.map(patient => ({
+          ...patient,
+          id: patient.patient_id, // ใช้ patient_id เป็น id
+        }));
+        setRows(updatedRows);
       } else {
-        console.log("✅ Data from Supabase:", data); // 🔍 เช็คข้อมูลที่ได้
-        setRows(data);
+        console.error('Error fetching patients:', data);
       }
-    };
-  
+    } catch (error) {
+      console.error('Server error:', error);
+    }
+  };
+
+  // ดึงข้อมูลผู้ป่วยเมื่อคอมโพเนนต์โหลดครั้งแรก
+  useEffect(() => {
     fetchPatients();
   }, []);
+
   
+  
+
   // ✅ ค้นหาข้อมูลใน DataGrid
   const filteredRows = useMemo(() => {
-    return rows.filter((row) =>
-      Object.values(row).some((value) =>
-        value?.toString().toLowerCase().includes(search.toLowerCase())
-      )
-    );
+    return rows
+      .filter((row) => row.patient_id) // ตรวจสอบว่าแถวมี patient_id
+      .filter((row) =>
+        Object.values(row).some((value) =>
+          value?.toString().toLowerCase().includes(search.toLowerCase())
+        )
+      );
   }, [rows, search]);
 
   // ✅ ฟังก์ชันลบข้อมูลออกจาก Supabase
   const handleDeleteRow = async (id) => {
-    const { error } = await supabase.from('patient').delete().eq('patient_id', id);
-
-    if (error) {
-      console.error("Error deleting patient:", error);
-    } else {
-      setRows(rows.filter((row) => row.patient_id !== id));
+    try {
+      const response = await fetch(`http://localhost:3001/delete-patient/${id}`, {
+        method: 'DELETE',
+      });
+  
+      if (response.ok) {
+        // ลบแถวจาก `rows` โดยไม่ต้องโหลดข้อมูลใหม่จากเซิร์ฟเวอร์
+        setRows((prevRows) => prevRows.filter((row) => row.patient_id !== id));
+      } else {
+        const data = await response.json();
+        console.error('Error deleting patient:', data.message);
+      }
+    } catch (error) {
+      console.error('Server error:', error);
     }
   };
+  
 
   const handleEditRow = (patient) => {
     setSelectedPatient(patient);
     setOpenEditDialog(true);
   };
-  
+
   const handleViewRow = (patient) => {
     setSelectedViewPatient(patient);
     setOpenViewDialog(true);
   };
-  
+
   const handleAddPatient = async () => {
-    const fullName = `${newPatient.firstName} ${newPatient.lastName}`;
-    const formattedDate = newPatient.appointment_date
-      ? newPatient.appointment_date.toISOString().split('T')[0] // ✅ แปลงเป็น YYYY-MM-DD
-      : null;
-  
-    const newPatientData = {
-      name: fullName,
-      age: parseInt(newPatient.age, 10),
-      lineid: newPatient.lineId,
-      allergic: newPatient.allergic,
-      sickness: newPatient.sickness,
-      address: newPatient.address,
-      tel: newPatient.tel,
-      email: newPatient.email,
-      appointment_date: formattedDate
-    };
-  
-    const { data, error } = await supabase.from('patient').insert([newPatientData]).select("*");
-  
-    if (error) {
-      console.error("Error inserting patient:", error);
-    } else {
-      // ✅ อัปเดตตารางทันทีโดยไม่ต้อง refresh
-      setRows([...rows, data[0]]);
-      
-      // ✅ ปิด Dialog และเคลียร์ฟอร์ม
-      setOpenDialog(false);
-      setNewPatient({
-        firstName: '',
-        lastName: '',
-        age: '',
-        lineId: '',
-        allergic: '',
-        sickness: '',
-        address: '',
-        tel: '',
-        email:'',
-        appointment_date: null
+    try {
+      const response = await fetch('http://localhost:3001/add-patient', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: `${newPatient.firstName} ${newPatient.lastName}`,
+          age: newPatient.age,
+          lineid: newPatient.lineId,
+          allergic: newPatient.allergic,
+          sickness: newPatient.sickness,
+          address: newPatient.address,
+          appointment_date: newPatient.appointment_date,
+        }),
       });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setRows([...rows, data]); // Add new patient to rows
+        setOpenDialog(false); // Close dialog after adding
+      } else {
+        console.error('Error adding patient:', data.message);
+      }
+    } catch (error) {
+      console.error('Server error:', error);
     }
   };
 
   const handleUpdatePatient = async () => {
     if (!selectedPatient) return;
   
-    const { error } = await supabase
-      .from('patient')
-      .update({
-        name: selectedPatient.name,
-        age: parseInt(selectedPatient.age, 10) || null,
-        lineid: selectedPatient.lineid,
-        allergic: selectedPatient.allergic,
-        sickness: selectedPatient.sickness,
-        address: selectedPatient.address,
-        appointment_date: selectedPatient.appointment_date
-      })
-      .eq('patient_id', selectedPatient.patient_id);
+    try {
+      const response = await fetch('http://localhost:3001/update-patient', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lineUserId: selectedPatient.lineid,
+          name: selectedPatient.name,
+          age: parseInt(selectedPatient.age, 10) || null,
+          lineid: selectedPatient.lineid,
+          allergic: selectedPatient.allergic,
+          sickness: selectedPatient.sickness,
+          address: selectedPatient.address,
+        }),
+      });
   
-    if (error) {
-      console.error("Error updating patient:", error);
-    } else {
-      setRows(rows.map(row => row.patient_id === selectedPatient.patient_id ? selectedPatient : row));
+      if (!response.ok) {
+        throw new Error('Error updating patient');
+      }
+  
+      const data = await response.json(); // Receive the updated data
+  
+      // Update the state with the updated data immediately without refreshing
+      setRows((prevRows) =>
+        prevRows.map((row) =>
+          row.patient_id === selectedPatient.patient_id
+            ? { ...row, ...data } // Update the patient data in the row
+            : row
+        )
+      );
+  
+      // Close the dialog
       setOpenEditDialog(false);
+  
+      // After update, fetch patients again to refresh the data
+      fetchPatients(); // Re-fetch patients after update
+    } catch (error) {
+      console.error('Error updating patient:', error);
     }
   };
   
   
-  
-  
-
   // ✅ กำหนด Columns ของ DataGrid
   const columns = [
     { field: 'patient_id', headerName: 'ID', width: 30 },
@@ -174,14 +194,7 @@ const [selectedViewPatient, setSelectedViewPatient] = useState(null);
         </IconButton>
       ),
     },
-    
-    
-    { 
-      field: 'name', 
-      headerName: 'ชื่อ-นามสกุล', 
-      width: 200, 
-      renderCell: (params) => params.row.name ? params.row.name : "ไม่ระบุ"
-    },
+    { field: 'name', headerName: 'ชื่อ-นามสกุล', width: 200 },
     { field: 'age', headerName: 'อายุ', width: 60 },
     { field: 'tel', headerName: 'เบอร์โทร', width: 80 },
     { field: 'email', headerName: 'อีเมล', width: 30 },
@@ -193,7 +206,7 @@ const [selectedViewPatient, setSelectedViewPatient] = useState(null);
       field: 'appointment_date',
       headerName: 'Appointment',
       width: 100,
-      renderCell: (params) => formatDate(params.value) 
+      renderCell: (params) => formatDate(params.value),
     },
     {
       field: 'actions',
@@ -209,8 +222,7 @@ const [selectedViewPatient, setSelectedViewPatient] = useState(null);
           </IconButton>
         </>
       ),
-    }
-    
+    },
   ];
 
   return (
@@ -239,18 +251,10 @@ const [selectedViewPatient, setSelectedViewPatient] = useState(null);
             NEW
           </Button>
 
-          <Button
-          variant="contained"
-          sx={{ bgcolor: isEditMode ? 'gray' : '#6EC7E2', color: 'white', fontWeight: 'bold', borderRadius: '8px' }}
-          onClick={() => setIsEditMode(!isEditMode)}
->
-          {isEditMode ? "CANCEL" : "EDIT"}
-          </Button>
+        
 
 
-          <IconButton>
-            <FontAwesomeIcon icon={faCog} style={{ fontSize: '20px', color: 'gray' }} />
-          </IconButton>
+       
         </div>
       </div>
 
@@ -375,6 +379,7 @@ const [selectedViewPatient, setSelectedViewPatient] = useState(null);
 
       {/* ตารางข้อมูล */}
       <DataGrid 
+       key={rows.length}
         rows={filteredRows} 
         columns={columns} 
         pageSize={5} 

@@ -49,7 +49,7 @@ app.use(limiter);
 // 🌍 CORS Configuration (จำกัด origin)
 const corsOptions = {
   origin: process.env.CORS_ALLOWED_ORIGINS?.split(",") || "*",
-  methods: "GET,POST",
+  methods: ['GET', 'POST', 'DELETE', 'PUT'],
   allowedHeaders: "Content-Type,Authorization",
 };
 app.use(cors(corsOptions));
@@ -456,6 +456,97 @@ app.post("/set-appointment", async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Server error", error: err.message });
+  }
+});
+app.get("/all-patients", async (req, res) => {
+  try {
+    // ดึงข้อมูลผู้ป่วยทั้งหมดจากตาราง patient
+    const { data, error } = await supabase
+      .from("patient")
+      .select("*");
+
+    if (error) {
+      return res.status(500).send(error.message);
+    }
+
+    // ส่งข้อมูลผู้ป่วยทั้งหมดกลับไป
+    res.status(200).json(data);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// API สำหรับอัปเดตข้อมูลผู้ป่วย
+app.put("/update-patient", async (req, res) => {
+try {
+  // รับข้อมูลที่ต้องการอัปเดตจากคำขอ
+  const { lineUserId, name, email, tel, address, sickness, age, allergic } = req.body;
+
+  if (!lineUserId) {
+    return res.status(400).json({ message: "Missing lineUserId" });
+  }
+
+  // ตรวจสอบว่ามีข้อมูลที่จะอัปเดตหรือไม่
+  const updates = {};
+  if (name) updates.name = name;
+  if (email) updates.email = email;
+  if (tel) updates.tel = tel;
+  if (address) updates.address = address;
+  if (sickness) updates.sickness = sickness;
+  if (age) updates.age = age;
+  if (allergic) updates.allergic = allergic;
+
+  // อัปเดตข้อมูลใน Supabase
+  const { data, error } = await supabase
+    .from("patient")
+    .update(updates)
+    .eq("lineid", lineUserId); // ใช้ lineUserId เป็นตัวระบุผู้ป่วย
+
+  if (error) {
+    return res.status(500).json({ message: "Error updating patient data", error: error.message });
+  }
+
+  return res.status(200).json({ message: "Patient data updated successfully", data });
+} catch (err) {
+  return res.status(500).json({ message: "Server error", error: err.message });
+}
+});
+app.post("/add-patient", async (req, res) => {
+try {
+  const { name, age, lineid, allergic, sickness, address, tel, email, appointment_date } = req.body;
+
+  const { data, error } = await supabase
+    .from("patient")
+    .insert([{ name, age, lineid, allergic, sickness, address, tel, email, appointment_date }])
+    .select();
+
+  if (error) {
+    return res.status(500).json({ message: "Error adding patient", error: error.message });
+  }
+
+  res.status(201).json(data[0]);
+} catch (err) {
+  res.status(500).json({ message: "Server error", error: err.message });
+}
+});
+
+// API สำหรับลบผู้ป่วย
+app.delete("/delete-patient/:id", async (req, res) => {  // Use :id to capture the patient ID
+  const { id } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from("patient")
+      .delete()
+      .eq("patient_id", id);
+
+    if (error) {
+      return res.status(500).json({ message: "Error deleting patient", error: error.message });
+    }
+
+    res.status(200).json({ message: "Patient deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
