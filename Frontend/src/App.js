@@ -7,7 +7,7 @@ import {
 import Sidebar from './Sidebar';
 import Home from './pages/Home';
 import Upload from './pages/Upload';
-import Notification from './pages/Notification';
+
 import Profile from './pages/Profile';
 import OtpPage from './pages/OtpPage';
 import LoginPage from './pages/LoginPage';
@@ -40,7 +40,7 @@ function App() {
                     <Route path="/upload" element={<Upload />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/patient" element={<Patient />} />
-                    <Route path="/notification" element={<Notification />} />
+                   
                     <Route index element={<Home />} /> {/* หน้าเริ่มต้น */}
                   </Routes>
                 </Sidebar>

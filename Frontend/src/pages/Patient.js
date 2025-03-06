@@ -6,7 +6,8 @@ import { faTrashAlt, faCog, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import '../components/Table.css';
-
+import CryptoJS from "crypto-js";
+import validator from 'validator';
 // 🗓️ ฟังก์ชันแปลง `appointment_date` เป็น `DD/MM/YYYY`
 const formatDate = (dateString) => {
   if (!dateString) return "ไม่ได้นัดหมาย"; // ถ้าไม่มีวันนัดหมาย
@@ -14,8 +15,19 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
+
+const encryptData = (data) => {
+  const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), 'secret_key').toString();
+  return encrypted;
+};
+const decryptData = (data) => {
+  const bytes = CryptoJS.AES.decrypt(data, 'secret_key');
+  const decrypted = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+  return decrypted;
+};
 const Patient = () => {
   const [rows, setRows] = useState([]);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
   const [newPatient, setNewPatient] = useState({
@@ -26,14 +38,17 @@ const Patient = () => {
     allergic: '',
     sickness: '',
     address: '',
-    appointment_date: null, // ✅ เพิ่มฟิลด์สำหรับนัดหมาย
+    email: '',
+    tel: '',
+    appointment_date: null, // ✅ Ensure appointment_date is set as null initially
   });
+  
   const [isEditMode, setIsEditMode] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedViewPatient, setSelectedViewPatient] = useState(null);
-
+  const [submitted, setSubmitted] = useState(false);
 
  // สำหรับ Dialog การยืนยันการลบ
  const [openConfirmDeleteDialog, setOpenConfirmDeleteDialog] = useState(false);
@@ -86,20 +101,41 @@ const Patient = () => {
   // ✅ ค้นหาข้อมูลใน DataGrid
   const filteredRows = useMemo(() => {
     return rows
-      .filter((row) => row.patient_id) // ตรวจสอบว่าแถวมี patient_id
+      .filter((row) => row.patient_id !== undefined && row.patient_id !== null)
       .filter((row) =>
         Object.values(row).some((value) =>
           value?.toString().toLowerCase().includes(search.toLowerCase())
         )
       );
   }, [rows, search]);
-
+  
   // ✅ ฟังก์ชันลบข้อมูลออกจาก Supabase
   const handleDeleteRow = (patientId) => {
     setPatientToDelete(patientId);  // Set the patient to delete
     setOpenConfirmDeleteDialog(true);  // Open the confirmation dialog
   };
   
+  const validateForm = () => {
+    const { firstName, lastName, age, tel, email, address } = newPatient;
+  
+    if (!firstName || !lastName || !age || !tel || !email || !address) {
+      setError("กรุณากรอกข้อมูลให้ครบถ้วน");
+      return false;
+    }
+  
+    if (!validator.isEmail(email)) {
+      setError("กรุณาใช้อีเมลที่รองรับ เช่น Gmail, Yahoo, Hotmail, Outlook, iCloud");
+      return false;
+    }
+  
+    if (!validator.isMobilePhone(tel, 'th-TH', { strictMode: false })) {
+      setError("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง");
+      return false;
+    }
+  
+    setError(""); // If all validations pass
+    return true;
+  };
   
 
   const handleEditRow = (patient) => {
@@ -108,15 +144,29 @@ const Patient = () => {
   };
 
   const handleViewRow = (patient) => {
-    setSelectedViewPatient(patient);
-    setOpenViewDialog(true);
-  };
+    setSelectedPatient(patient);  // Set patient data to view
+    setOpenViewDialog(true);  // Open the view dialog
+  }
   const handleCancelDelete = () => {
     setOpenConfirmDeleteDialog(false); // Close the dialog
   };
+
+
+    const handleSubmit = () => {
+      setSubmitted(true);
+    if (validateForm()) {
+      
+      handleAddPatient();
+
+      setOpenDialog(false);
+      
+    }
+  };
+
   
   const handleAddPatient = async () => {
     try {
+      console.log("Sending patient data:", newPatient);  // Log the data being sent to the server
       const response = await fetch('http://localhost:3001/add-patient', {
         method: 'POST',
         headers: {
@@ -129,23 +179,26 @@ const Patient = () => {
           allergic: newPatient.allergic,
           sickness: newPatient.sickness,
           address: newPatient.address,
+          email: newPatient.email,
+          tel: newPatient.tel,
+          
           appointment_date: newPatient.appointment_date,
         }),
       });
-
+  
       const data = await response.json();
-
+  
       if (response.ok) {
         setRows([...rows, data]); // Add new patient to rows
         setOpenDialog(false); // Close dialog after adding
       } else {
-        console.error('Error adding patient:', data.message);
+        
       }
     } catch (error) {
       console.error('Server error:', error);
     }
   };
-
+  
   const handleUpdatePatient = async () => {
     if (!selectedPatient) return;
   
@@ -232,14 +285,7 @@ const Patient = () => {
             <FontAwesomeIcon icon={faTrashAlt} />
           </IconButton>
          
-          <DataGrid
-  rows={filteredRows} 
-  columns={columns}
-  pageSize={5}
-  rowsPerPageOptions={[5]}
-  getRowId={(row) => row.patient_id}
  
-/>
 
       {/* Dialog สำหรับยืนยันการลบ */}
       <Dialog
@@ -270,7 +316,7 @@ const Patient = () => {
       <Typography variant="h3" gutterBottom>Patient</Typography>
 
       {/* ✅ จัดปุ่ม NEW, EDIT ให้อยู่ขวา และ Search Box อยู่ตรงกลาง */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' ,}}>
         {/* Search Box ตรงกลาง */}
         <TextField 
           label="Search" 
@@ -310,9 +356,12 @@ const Patient = () => {
         label="ชื่อจริง" 
         value={newPatient.firstName} 
         onChange={(e) => setNewPatient({ ...newPatient, firstName: e.target.value })} 
+        
         variant="outlined"
         slotProps={{ inputLabel: { shrink: true } }}
         fullWidth 
+        error={submitted && !newPatient.firstName}
+
       />
       <TextField 
         label="นามสกุล" 
@@ -321,6 +370,8 @@ const Patient = () => {
         variant="outlined"
         slotProps={{ inputLabel: { shrink: true } }}
         fullWidth 
+        error={submitted && !newPatient.lastName}
+       
       />
       <TextField 
         label="อายุ"
@@ -331,13 +382,9 @@ const Patient = () => {
         fullWidth 
         inputProps={{ inputMode: 'numeric' }}
         sx={{ bgcolor: '#f0f0f0' }}
+        error={submitted && !newPatient.age}
       />
-      <TextField 
-        label="LINE ID" 
-        value={newPatient.lineId} 
-        onChange={(e) => setNewPatient({ ...newPatient, lineId: e.target.value })} 
-        fullWidth 
-      />
+   
       <TextField 
         label="อาการแพ้" 
         value={newPatient.allergic} 
@@ -345,6 +392,7 @@ const Patient = () => {
         variant="outlined"
         slotProps={{ inputLabel: { shrink: true } }}
         fullWidth 
+        error={submitted && !newPatient.allergic}
       />
       <TextField 
         label="โรคประจำตัว" 
@@ -353,29 +401,50 @@ const Patient = () => {
         variant="outlined"
         slotProps={{ inputLabel: { shrink: true } }}
         fullWidth 
+        error={submitted && !newPatient.sickness}
       />
-    </Box>
 
-
+      
     <TextField 
-      label="เบอร์โทรศัพท์" 
-      value={newPatient.tel} 
-      onChange={(e) => setNewPatient({ ...newPatient, tel: e.target.value })} 
-      variant="outlined"
-      slotProps={{ inputLabel: { shrink: true } }}
-      fullWidth 
-      sx={{ marginTop: 2 }}
-    />
+  label="เบอร์โทรศัพท์" 
+  value={newPatient.tel} 
+  onChange={(e) => {
+    const onlyNums = e.target.value.replace(/\D/g, ""); // ลบตัวอักษรที่ไม่ใช่ตัวเลข
+    setNewPatient({ ...newPatient, tel: onlyNums });
+  }} 
+  variant="outlined"
+  slotProps={{ inputLabel: { shrink: true } }}
+  fullWidth 
+  error={submitted && (!newPatient.tel || !/^0[689]\d{8}$/.test(newPatient.tel))}
+  helperText={submitted && (!newPatient.tel 
+    ? "กรุณากรอกเบอร์โทรศัพท์" 
+    : !/^0[689]\d{8}$/.test(newPatient.tel) 
+      ? "เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 08, 09 หรือ 06 และมี 10 หลัก" 
+      : ""
+  )}
+
+/>
+   
+
+
 
 <TextField 
-      label="อีเมล" 
-      value={newPatient.email} 
-      onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })} 
-      variant="outlined"
-      slotProps={{ inputLabel: { shrink: true } }}
-      fullWidth 
-      sx={{ marginTop: 2 }}
-    />
+  label="อีเมล" 
+  value={newPatient.email} 
+  onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })} 
+  variant="outlined"
+  slotProps={{ inputLabel: { shrink: true } }}
+  fullWidth 
+ 
+  error={submitted && (!newPatient.email || !/^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|icloud\.com)$/.test(newPatient.email))}
+  helperText={submitted && (!newPatient.email 
+    ? "กรุณากรอกอีเมล" 
+    : !/^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|icloud\.com)$/.test(newPatient.email) 
+      ? "กรุณาใช้อีเมลที่รองรับ เช่น Gmail, Yahoo, Hotmail, Outlook, iCloud" 
+      : ""
+  )}
+/>
+
     <TextField 
       label="Address" 
       value={newPatient.address} 
@@ -383,31 +452,24 @@ const Patient = () => {
       variant="outlined"
       slotProps={{ inputLabel: { shrink: true } }}
       fullWidth 
-      sx={{ marginTop: 2 }}
+      error={submitted && !newPatient.address}
+  
     />
 
-    
-<Box sx={{ mt: 4 }}>
+</Box>
 
-<LocalizationProvider dateAdapter={AdapterDateFns}>
-<TextField
-    label="เบอร์โทรศัพท์"
-    value={newPatient.tel}
-    onChange={(e) => setNewPatient({ ...newPatient, tel: e.target.value })}
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }}
-    fullWidth
-  />
-</LocalizationProvider>
+<Box sx={{ mt: 4 }}>
 
 
   <LocalizationProvider dateAdapter={AdapterDateFns}>
-    <DatePicker
-      label="เลือกวันนัดหมาย"
-      value={newPatient.appointment_date}
-      onChange={(date) => setNewPatient({ ...newPatient, appointment_date: date })}
-      renderInput={(params) => <TextField {...params} fullWidth />}
-    />
+  <DatePicker
+  label="เลือกวันนัดหมาย"
+  value={newPatient.appointment_date}
+  onChange={(date) => setNewPatient({ ...newPatient, appointment_date: date })}
+  slots={{ textField: (params) => <TextField {...params} fullWidth /> }} // ใช้ slots แทน renderInput
+  error={submitted && !newPatient.appointment_date}
+/>
+
   </LocalizationProvider>
 </Box>
 
@@ -415,22 +477,25 @@ const Patient = () => {
   </DialogContent>
   <DialogActions>
     <Button onClick={() => setOpenDialog(false)}>CANCEL</Button>
-    <Button onClick={handleAddPatient} color="primary">ADD</Button>
+    <Button onClick={handleSubmit} color="primary">ADD</Button>
   </DialogActions>
 </Dialog>
 
 
       {/* ตารางข้อมูล */}
       <DataGrid 
-       key={rows.length}
-        rows={filteredRows} 
-        columns={columns} 
-        pageSize={5} 
-        rowsPerPageOptions={[5, 10, 15]} 
-        checkboxSelection 
-        getRowId={(row) => row.patient_id} // ✅ ใช้ patient_id เป็น ID
-         className="dataGridStyle"
+      key={rows.length}
+      rows={filteredRows} 
+      columns={columns} 
+      pageSize={5} 
+      rowsPerPageOptions={[5, 10, 15]} 
+      
+      getRowId={(row) => row.patient_id} // ✅ ใช้ patient_id เป็น ID
+      className="dataGridStyle"
+  
+    
       />
+      
 
 <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
   <DialogTitle>Edit Patient</DialogTitle>
@@ -457,14 +522,7 @@ const Patient = () => {
         slotProps={{ inputLabel: { shrink: true } }}
         fullWidth 
       />
-      <TextField 
-        label="LINE ID" 
-        value={selectedPatient?.lineid || ''} 
-        onChange={(e) => setSelectedPatient({ ...selectedPatient, lineid: e.target.value })} 
-        variant="outlined"
-        slotProps={{ inputLabel: { shrink: true } }}
-        fullWidth 
-      />
+ 
       <TextField 
         label="อาการแพ้" 
         value={selectedPatient?.allergic || ''} 
@@ -494,12 +552,13 @@ const Patient = () => {
 
     <Box sx={{ mt: 3 }}>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <DatePicker
-          label="เลือกวันนัดหมาย"
-          value={selectedPatient?.appointment_date}
-          onChange={(date) => setSelectedPatient({ ...selectedPatient, appointment_date: date })}
-          renderInput={(params) => <TextField {...params} fullWidth />}
-        />
+      <DatePicker
+  label="เลือกวันนัดหมาย"
+  value={selectedPatient?.appointment_date}
+  onChange={(date) => setSelectedPatient({ ...selectedPatient, appointment_date: date })}
+  TextFieldComponent={TextField}
+/>
+
       </LocalizationProvider>
     </Box>
   </DialogContent>
@@ -574,19 +633,22 @@ const Patient = () => {
 
     <Box sx={{ mt: 3 }}>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <DatePicker
-          label="วันนัดหมาย"
-          value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
-          disabled={true} // ✅ ปิดการเลือกวัน
-          renderInput={(params) => (
-            <TextField 
-              {...params} 
-              fullWidth 
-              variant="outlined"
-              slotProps={{ inputLabel: { shrink: true } }}               value={selectedViewPatient?.appointment_date ? params.value : "ยังไม่ได้นัด"} 
-            />
-          )}
-        />
+      <DatePicker
+  label="วันนัดหมาย"
+  value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
+  disabled={true} // ✅ ปิดการเลือกวัน
+  TextFieldComponent={(params) => (
+    <TextField 
+      {...params} 
+      fullWidth 
+      variant="outlined"
+      slotProps={{ inputLabel: { shrink: true } }} 
+      value={selectedViewPatient?.appointment_date ? params.value : "ยังไม่ได้นัด"}
+    />
+  )}
+/>
+
+       
       </LocalizationProvider>
     </Box>
   </DialogContent>

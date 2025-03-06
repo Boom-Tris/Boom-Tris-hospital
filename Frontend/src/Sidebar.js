@@ -55,7 +55,7 @@ const Sidebar = ({ children }) => {
     { text: 'UPLOAD', icon: faUpload },
     { text: 'PROFILE', icon: faCircleUser },
     { text: 'PATIENT', icon: faStethoscope },
-    { text: 'NOTIFICATION', icon: faBell },
+ 
     // แสดงเมนู Add_personnel เฉพาะถ้าเป็น admin
     ...(isAdmin ? [{ text: 'Add_personnel', icon: faColonSign }] : []),
     { text: 'LOG OUT', icon: faSignOutAlt }, // เมนูออกจากระบบ
