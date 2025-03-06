@@ -144,9 +144,10 @@ const Patient = () => {
   };
 
   const handleViewRow = (patient) => {
-    setSelectedPatient(patient);  // Set patient data to view
-    setOpenViewDialog(true);  // Open the view dialog
-  }
+    setSelectedViewPatient(patient);  // ตั้งค่า selectedViewPatient ให้เป็นผู้ป่วยที่เลือก
+    setOpenViewDialog(true);  // เปิด Dialog เพื่อแสดงข้อมูล
+  };
+  
   const handleCancelDelete = () => {
     setOpenConfirmDeleteDialog(false); // Close the dialog
   };
@@ -166,7 +167,7 @@ const Patient = () => {
   
   const handleAddPatient = async () => {
     try {
-      console.log("Sending patient data:", newPatient);  // Log the data being sent to the server
+     
       const response = await fetch('http://localhost:3001/add-patient', {
         method: 'POST',
         headers: {
@@ -285,7 +286,7 @@ const Patient = () => {
             <FontAwesomeIcon icon={faTrashAlt} />
           </IconButton>
          
- 
+
 
       {/* Dialog สำหรับยืนยันการลบ */}
       <Dialog
@@ -484,18 +485,15 @@ const Patient = () => {
 
       {/* ตารางข้อมูล */}
       <DataGrid 
-      key={rows.length}
-      rows={filteredRows} 
-      columns={columns} 
-      pageSize={5} 
-      rowsPerPageOptions={[5, 10, 15]} 
-      
-      getRowId={(row) => row.patient_id} // ✅ ใช้ patient_id เป็น ID
-      className="dataGridStyle"
-  
-    
+       key={rows.length}
+        rows={filteredRows} 
+        columns={columns} 
+        pageSize={5} 
+        rowsPerPageOptions={[5, 10, 15]} 
+        checkboxSelection 
+        getRowId={(row) => row.patient_id} // ✅ ใช้ patient_id เป็น ID
+         className="dataGridStyle"
       />
-      
 
 <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
   <DialogTitle>Edit Patient</DialogTitle>
@@ -522,7 +520,14 @@ const Patient = () => {
         slotProps={{ inputLabel: { shrink: true } }}
         fullWidth 
       />
- 
+      <TextField 
+        label="LINE ID" 
+        value={selectedPatient?.lineid || ''} 
+        onChange={(e) => setSelectedPatient({ ...selectedPatient, lineid: e.target.value })} 
+        variant="outlined"
+        slotProps={{ inputLabel: { shrink: true } }}
+        fullWidth 
+      />
       <TextField 
         label="อาการแพ้" 
         value={selectedPatient?.allergic || ''} 
@@ -552,13 +557,14 @@ const Patient = () => {
 
     <Box sx={{ mt: 3 }}>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <DatePicker
-  label="เลือกวันนัดหมาย"
-  value={selectedPatient?.appointment_date}
-  onChange={(date) => setSelectedPatient({ ...selectedPatient, appointment_date: date })}
-  TextFieldComponent={TextField}
-/>
-
+        <DatePicker
+          label="เลือกวันนัดหมาย"
+          value={selectedPatient?.appointment_date}
+          onChange={(date) => setSelectedPatient({ ...selectedPatient, appointment_date: date })}
+          slots={{
+            textField: (params) => <TextField {...params} fullWidth />
+          }}
+        />
       </LocalizationProvider>
     </Box>
   </DialogContent>
@@ -599,12 +605,7 @@ const Patient = () => {
         fullWidth 
         variant="outlined"
         slotProps={{ inputLabel: { shrink: true } }}       />
-      <TextField 
-        label="LINE ID" 
-        value={selectedViewPatient?.lineid || ''} 
-        fullWidth 
-        variant="outlined"
-        slotProps={{ inputLabel: { shrink: true } }}       />
+      
       <TextField 
         label="อาการแพ้" 
         value={selectedViewPatient?.allergic || ''} 
@@ -632,24 +633,25 @@ const Patient = () => {
     </Box>
 
     <Box sx={{ mt: 3 }}>
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <DatePicker
-  label="วันนัดหมาย"
-  value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
-  disabled={true} // ✅ ปิดการเลือกวัน
-  TextFieldComponent={(params) => (
-    <TextField 
-      {...params} 
-      fullWidth 
-      variant="outlined"
-      slotProps={{ inputLabel: { shrink: true } }} 
-      value={selectedViewPatient?.appointment_date ? params.value : "ยังไม่ได้นัด"}
-    />
-  )}
-/>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+  <DatePicker
+    label="วันนัดหมาย"
+    value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
+    disabled={true} // ✅ ปิดการเลือกวัน
+    slots={{
+      textField: (params) => (
+        <TextField
+          {...params}
+          fullWidth
+          variant="outlined"
+          slotProps={{ inputLabel: { shrink: true } }}
+          value={selectedViewPatient?.appointment_date ? params.value : "ยังไม่ได้นัด"}  // Display the message if appointment_date is not available
+        />
+      ),
+    }}
+  />
+</LocalizationProvider>
 
-       
-      </LocalizationProvider>
     </Box>
   </DialogContent>
 </Dialog>
