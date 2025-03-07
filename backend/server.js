@@ -596,228 +596,53 @@ app.delete("/delete-patient/:id", async (req, res) => {
   }
 });
 
-// ตั้งค่า Multer สำหรับการอัปโหลดไฟล์
 
-/*
-app.use(cookieParser());
-
-// ตั้งค่า Multer สำหรับการอัปโหลดไฟล์
+const storage = multer.memoryStorage();
 const upload = multer({ storage: multer.memoryStorage() });
-// Middleware สำหรับการตรวจสอบ JWT Token และดึงข้อมูลผู้ใช้
-app.use(async (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1]; // หรืออาจใช้ req.headers.authorization สำหรับการตรวจสอบจาก header
 
-  if (!token) {
-    return res.status(401).json({ message: "No token provided" });
-  }
 
+ // Use cors once
+
+
+ app.post("/upload-file", upload.array("files"), async (req, res) => {
   try {
-    const { data, error } = await supabase.auth.api.getUser(token);
+    const files = req.files; // ไฟล์ที่อัปโหลด
 
-    if (error || !data) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    req.user = data; // เก็บข้อมูลผู้ใช้ลงใน request object
-    next();
-  } catch (err) {
-    console.error("JWT Verification Error:", err);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-// Endpoint สำหรับการอัปโหลดไฟล์
-app.post("/upload", upload.array("files"), async (req, res) => {
-  const files = req.files;
-  const patientId = req.body.patientId;
-  const user = req.user; // ดึงข้อมูลผู้ใช้จาก request object
-
-  try {
     if (!files || files.length === 0) {
-      return res.status(400).json({ success: false, message: "No files uploaded." });
-    }
-
-    
-    
-    
-    
-
-    for (const file of files) {
-      const filePath = `patient_files/${patientId}/${Date.now()}_${file.originalname}`;
-
-      // อัปโหลดไฟล์ไปยัง Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("bucket888")
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype,
-        });
-
-      if (uploadError) {
-        console.error("Supabase Storage Upload Error:", uploadError);
-        return res.status(500).json({ success: false, message: `Failed to upload file: ${uploadError.message}` });
-      }
-
-      // บันทึกข้อมูลไฟล์ลงในตาราง patient_files
-      const { data: insertData, error: insertError } = await supabase
-        .from("patient_files")
-        .insert([
-          {
-            patient_id: patientId,
-            file_name: file.originalname,
-            file_type: file.mimetype,
-            file_path: filePath,
-            upload_date: new Date().toISOString(),
-          },
-        ]);
-
-      if (insertError) {
-        console.error("Supabase Insert Error:", insertError);
-        return res.status(500).json({ success: false, message: `Failed to save file info: ${insertError.message}` });
-      }
-    }
-
-    res.status(200).json({ success: true, message: "Files uploaded successfully." });
-  } catch (error) {
-    console.error("Server Error:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-const storage = multer.memoryStorage(); // เก็บไฟล์ใน memory
-const upload = multer({ storage: storage });
-
-// สร้าง endpoint สำหรับอัปโหลดไฟล์
-app.post("/upload-file", upload.array('files'), async (req, res) => {
-  try {
-    // ตรวจสอบว่ามีไฟล์หรือไม่
-    if (!req.files || req.files.length === 0) {
       return res.status(400).json({ success: false, message: "No files uploaded" });
     }
 
     // อัปโหลดไฟล์ไปยัง Supabase Storage
-    const patientID= req.body.patientId; // หรือจะรับค่า patientId จาก Body หรือ Params ก็ได้
-    const uploadPromises = req.files.map(async (file) => {
+    for (const file of files) {
+      if (!file.path) {
+        console.error("File path is undefined:", file);
+        continue; // ข้ามไฟล์นี้ถ้าไม่มี path
+      }
+
+      const filePath = `bucket888/${file.originalname}`;
+      const fileContent = fs.readFileSync(file.path); // อ่านไฟล์จาก path
+
       const { data, error } = await supabase
         .storage
-        .from('bucket888') // ชื่อ bucket
-        .upload(`patient-${patientId}/${file.originalname}`, file.buffer); // อัปโหลดไฟล์ไปยัง path ที่กำหนด
+        .from("bucket888")
+        .upload(filePath, fileContent);
 
       if (error) {
-        throw new Error(error.message);
+        throw new Error(`Error uploading file ${file.originalname}: ${error.message}`);
       }
 
-      // หลังจากอัปโหลดเสร็จแล้ว เพิ่มข้อมูลลงในตาราง patient_files
-     
-     
-     
-     
-     
-     
+      // ลบไฟล์ชั่วคราวหลังจากอัปโหลดเสร็จ
+      fs.unlinkSync(file.path);
+    }
 
-     
-     
-
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
-
-      return data;
-    });
-
-    const uploadResults = await Promise.all(uploadPromises);
-
-    res.json({
-      success: true,
-      message: "Files uploaded successfully",
-      data: uploadResults, // ส่งข้อมูลที่อัปโหลดกลับไป
-    });
+    res.status(200).json({ success: true, message: "Files uploaded successfully!" });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message || "Error uploading files",
-    });
+    console.error("Error uploading files:", error);
+    res.status(500).json({ success: false, message: "Error uploading files" });
   }
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Endpoint สำหรับการลบไฟล์
 app.delete("/delete/:fileId", async (req, res) => {
   const fileId = req.params.fileId;
 
