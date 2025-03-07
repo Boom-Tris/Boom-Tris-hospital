@@ -9,20 +9,32 @@ import {
   List,
   ListItem,
   ListItemText,
+  IconButton,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { format } from "date-fns"; // ใช้ date-fns เพื่อจัดการเวลา
+import { format } from "date-fns";
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
+import { Snackbar, Alert } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const Upload = () => {
   const [patientName, setPatientName] = useState("");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [appointmentDate, setAppointmentDate] = useState(null); // วันนัด (Date type)
-  const [reminderTime, setReminderTime] = useState(null); // เวลาแจ้งเตือน (Date type)
+  const [appointmentDate, setAppointmentDate] = useState(null);
+  const [reminderTime, setReminderTime] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
+  // สถานะของไฟล์
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   const handleSearchPatient = async () => {
     setLoading(true);
@@ -31,7 +43,6 @@ const Upload = () => {
         `http://localhost:3001/search-patient?name=${patientName}`
       );
       const data = await response.json();
-      console.log("Fetched Patients:", data);
       setPatients(data);
     } catch (error) {
       console.error("Error fetching patient data:", error);
@@ -40,50 +51,262 @@ const Upload = () => {
     }
   };
 
-  // ฟังก์ชันแปลงเวลา reminderTime เป็นรูปแบบที่ฐานข้อมูลรองรับ (HH:mm)
-  const formatReminderTime = (time) => {
-    if (!time) return null;
-    return format(time, "HH:mm"); // แปลงเวลาเป็นรูปแบบ HH:mm
-  };
-
-  const handleSetAppointment = async (patientId, patientLineid) => {
-    if (!appointmentDate || !reminderTime) {
-      alert("Please specify appointment date and reminder time.");
+  const handleSetAppointment = async (patientId) => {
+    if (!patientId) {
+      setSnackbar({
+        open: true,
+        message: "Patient ID is required.",
+        severity: "error",
+      });
       return;
     }
 
-    // แปลงเวลา reminderTime ให้เป็นรูปแบบ AM/PM
-    const formattedReminderTime = format(reminderTime, "hh:mm a"); // ใช้ 'hh:mm a' เพื่อแสดงเวลาในรูปแบบ AM/PM
+    const data = {
+      patient_id: patientId,
+      appointment_date: appointmentDate
+        ? format(appointmentDate, "yyyy-MM-dd")
+        : null,
+      reminder_time: reminderTime ? format(reminderTime, "HH:mm") : null,
+    };
 
     try {
       const response = await fetch("http://localhost:3001/set-appointment", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: patientName,
-          lineid: patientLineid,
-          appointment_date: appointmentDate,
-          reminder_time: formattedReminderTime, // ใช้เวลาในรูปแบบ AM/PM
-        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       });
       const result = await response.json();
-      console.log("Appointment Response:", result);
+
       if (result.success) {
-        alert("Appointment set successfully");
-        handleSearchPatient(); // รีเฟรชข้อมูลใหม่
+        setSnackbar({
+          open: true,
+          message: "Appointment set successfully!",
+          severity: "success",
+        });
+
+        // อัปโหลดไฟล์หลังจากตั้งค่านัดหมายเสร็จสิ้น
+        if (files.length > 0) {
+          await handleUploadFiles(patientId);
+        }
+
+        handleSearchPatient(); // เพื่ออัปเดตข้อมูลผู้ป่วย
       } else {
-        alert("Failed to set appointment");
+        setSnackbar({
+          open: true,
+          message: "Failed to set appointment.",
+          severity: "error",
+        });
       }
     } catch (error) {
-      console.error("Error setting appointment:", error);
+      setSnackbar({
+        open: true,
+        message: "Error setting appointment.",
+        severity: "error",
+      });
+      console.error("Error:", error);
     }
+  };
+
+  const handleFileChange = (event) => {
+    const selectedFiles = event.target.files;
+    setFiles([...selectedFiles]);
+  };
+
+  
+   
+   
+   
+ 
+
+  const handleUploadFiles = async (patientId) => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+    formData.append('patientId', patientId); // เพิ่ม patientId ใน formData
+  
+    try {
+      const response = await fetch('http://localhost:3001/upload-file', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      const result = await response.json();
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: result.message || "Files uploaded successfully!",
+          severity: "success",
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.message || "Failed to upload files.",
+          severity: "error",
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || "Error uploading files.",
+        severity: "error",
+      });
+    }
+  };
+  
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+   
+  
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+
+   
+   
+   
+   
+   
+
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+  
+
+  const handleDeleteFile = async (fileId) => {
+    try {
+      const response = await fetch(`http://localhost:3001/delete/${fileId}`, {
+        method: "DELETE",
+      });
+
+      // ตรวจสอบว่า response เป็น JSON หรือไม่
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response from server");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: result.message || "File deleted successfully!",
+          severity: "success",
+        });
+        handleSearchPatient(); // อัปเดตข้อมูลผู้ป่วย
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.message || "Failed to delete file.",
+          severity: "error",
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || "Error deleting file.",
+        severity: "error",
+      });
+      console.error("Error:", error);
+    }
+  };
+
+  const renderFilePreviews = () => {
+    return files.map((file, index) => (
+      <ListItem key={index}>
+        <ListItemText
+          primary={file.name}
+          secondary={`Size: ${file.size} bytes`}
+        />
+      </ListItem>
+    ));
+  };
+
+  const renderPatientFiles = (patient) => {
+    return patient.files?.map((file) => (
+      <ListItem key={file.file_id}>
+        <ListItemText
+          primary={file.file_name}
+          secondary={`Uploaded on: ${new Date(
+            file.upload_date
+          ).toLocaleString()}`}
+        />
+        <IconButton onClick={() => handleDeleteFile(file.file_id)}>
+          <DeleteIcon />
+        </IconButton>
+      </ListItem>
+    ));
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box>
         <Typography variant="h3" gutterBottom>
-          Upload
+          Manage Appointments
         </Typography>
         <Box
           sx={{
@@ -161,13 +384,12 @@ const Upload = () => {
                             slots={{ openPickerIcon: FlightTakeoffIcon }}
                             slotProps={{
                               openPickerIcon: {
-                                color: "primary", // กำหนดสีไอคอน
+                                color: "primary",
                               },
                             }}
                             renderInput={(params) => <TextField {...params} />}
                           />
 
-                          {/* TimePicker สำหรับเวลาเตือนในรูปแบบ 24 ชั่วโมง */}
                           <TimePicker
                             value={reminderTime}
                             onChange={(newTime) => setReminderTime(newTime)}
@@ -175,24 +397,39 @@ const Upload = () => {
                             slots={{ openPickerIcon: FlightTakeoffIcon }}
                             slotProps={{
                               openPickerIcon: {
-                                color: "primary", // กำหนดสีไอคอน
+                                color: "primary",
                               },
                             }}
                             renderInput={(params) => <TextField {...params} />}
                           />
 
+                          <input
+                            type="file"
+                            multiple
+                            onChange={handleFileChange}
+                            style={{ marginTop: 10 }}
+                          />
+                          <List>{renderFilePreviews()}</List>
+
                           <Button
                             variant="contained"
                             sx={{ marginLeft: 2 }}
                             onClick={() =>
-                              handleSetAppointment(
-                                patient.patient_id,
-                                patient.lineid
-                              )
+                              handleSetAppointment(patient.patient_id)
                             }
+                            disabled={uploading}
                           >
-                            Set Appointment
+                            {uploading ? (
+                              <CircularProgress size={24} />
+                            ) : (
+                              "Set Appointment and Reminder Time"
+                            )}
                           </Button>
+
+                          <Typography variant="h6" sx={{ marginTop: 2 }}>
+                            Uploaded Files
+                          </Typography>
+                          <List>{renderPatientFiles(patient)}</List>
                         </>
                       }
                     />
@@ -203,6 +440,22 @@ const Upload = () => {
           </Grid>
         </Box>
       </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        action={
+          <Button
+            color="inherit"
+            size="small"
+            onClick={() => setSnackbar({ ...snackbar, open: false })}
+          >
+            CLOSE
+          </Button>
+        }
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </LocalizationProvider>
   );
 };

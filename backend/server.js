@@ -3,13 +3,18 @@ const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const cors = require("cors");
 const axios = require("axios");
-
+const multer = require("multer");
 const jwt = require("jsonwebtoken");
-const app = express();
-const PORT = process.env.PORT || 3001;
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcrypt");
+const path = require("path");
+const fs = require("fs");
+const winston = require("winston");
+const cookieParser  =require("cookie-parser");
+
+const app = express();
+const PORT = process.env.PORT || 3001;
 const saltRounds = 10;
 const userInputStatus = {};
 
@@ -30,7 +35,7 @@ const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
 
 app.use(helmet());
 app.set("trust proxy", 1); // เปิดใช้งาน trust proxy
-const winston = require("winston");
+
 // ตั้งค่า winston logger
 const logger = winston.createLogger({
   level: "info",
@@ -49,7 +54,8 @@ app.use(limiter);
 // 🌍 CORS Configuration (จำกัด origin)
 const corsOptions = {
   origin: process.env.CORS_ALLOWED_ORIGINS?.split(",") || "*",
-  methods: ['GET', 'POST', 'DELETE', 'PUT'],
+  methods: ["GET", "POST", "DELETE", "PUT"],
+  credentials: true, 
   allowedHeaders: "Content-Type,Authorization",
 };
 app.use(cors(corsOptions));
@@ -122,7 +128,10 @@ app.post("/login", async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: "2h" }
           );
-
+            
+            
+             
+            
           // ตั้งค่า cookie เป็น HTTP-only
           res.cookie("token", token, {
             httpOnly: true, // ป้องกันการเข้าถึงจาก JavaScript
@@ -401,50 +410,52 @@ app.get("/search-patient", async (req, res) => {
 // API สำหรับตั้งค่าการนัดหมาย
 app.post("/set-appointment", async (req, res) => {
   try {
-    const { name, lineid, appointment_date, reminder_time } = req.body;
+    const { patient_id, appointment_date, reminder_time } = req.body;
 
-    if (!name || !lineid || !appointment_date || !reminder_time) {
+    // พิมพ์ค่าที่ได้รับจาก body เพื่อตรวจสอบ
+    console.log("Request Body:", req.body);
+
+    if (!patient_id) {
       return res
         .status(400)
-        .json({ success: false, message: "Missing required fields" });
+        .json({ success: false, message: "Patient ID is required" });
     }
 
-    // 🔍 1. ค้นหา patient_id จาก name + lineid
-    const { data: patientData, error: patientError } = await supabase
-      .from("patient")
-      .select("patient_id")
-      .eq("lineid", lineid)
-      .eq("name", name)
-      .limit(1)
-      .single();
+    const updateFields = {};
+    if (appointment_date) updateFields.appointment_date = appointment_date;
+    if (reminder_time) updateFields.reminder_time = reminder_time;
 
-    if (patientError || !patientData) {
-      return res.status(404).json({
+    // หากไม่มีข้อมูลที่จะอัปเดต
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
         success: false,
-        message: "Patient not found",
-        error: patientError,
+        message:
+          "At least one of appointment_date or reminder_time must be provided",
       });
     }
 
-    const patient_id = patientData.patient_id;
-
-    // 🔄 2. อัปเดตข้อมูลการนัดหมาย
+    // อัปเดตข้อมูลในฐานข้อมูล
     const { data, error } = await supabase
       .from("patient")
-      .update({
-        appointment_date: appointment_date,
-        reminder_time: reminder_time,
-      })
+      .update(updateFields)
       .eq("patient_id", patient_id)
       .select();
 
+    // หากมีข้อผิดพลาดจาก Supabase
     if (error) {
       console.error("Supabase Error:", error);
       return res
         .status(500)
         .json({ success: false, message: "Database error", error });
     }
-    console.log("Received data:", req.body); 
+
+    // หากไม่พบข้อมูลที่อัปเดต
+    if (data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found or no changes made",
+      });
+    }
 
     return res.json({
       success: true,
@@ -452,18 +463,18 @@ app.post("/set-appointment", async (req, res) => {
       data,
     });
   } catch (err) {
+    // แสดงข้อความ error เพื่อช่วยในการดีบั๊ก
     console.error("Server Error:", err);
     res
       .status(500)
       .json({ success: false, message: "Server error", error: err.message });
   }
 });
+
 app.get("/all-patients", async (req, res) => {
   try {
     // ดึงข้อมูลผู้ป่วยทั้งหมดจากตาราง patient
-    const { data, error } = await supabase
-      .from("patient")
-      .select("*");
+    const { data, error } = await supabase.from("patient").select("*");
 
     if (error) {
       return res.status(500).send(error.message);
@@ -478,62 +489,93 @@ app.get("/all-patients", async (req, res) => {
 
 // API สำหรับอัปเดตข้อมูลผู้ป่วย
 app.put("/update-patient", async (req, res) => {
-try {
-  // รับข้อมูลที่ต้องการอัปเดตจากคำขอ
-  const { lineUserId, name, email, tel, address, sickness, age, allergic } = req.body;
+  try {
+    // รับข้อมูลที่ต้องการอัปเดตจากคำขอ
+    const { lineUserId, name, email, tel, address, sickness, age, allergic } =
+      req.body;
 
-  if (!lineUserId) {
-    return res.status(400).json({ message: "Missing lineUserId" });
+    if (!lineUserId) {
+      return res.status(400).json({ message: "Missing lineUserId" });
+    }
+
+    // ตรวจสอบว่ามีข้อมูลที่จะอัปเดตหรือไม่
+    const updates = {};
+    if (name) updates.name = name;
+    if (email) updates.email = email;
+    if (tel) updates.tel = tel;
+    if (address) updates.address = address;
+    if (sickness) updates.sickness = sickness;
+    if (age) updates.age = age;
+    if (allergic) updates.allergic = allergic;
+
+    // อัปเดตข้อมูลใน Supabase
+    const { data, error } = await supabase
+      .from("patient")
+      .update(updates)
+      .eq("lineid", lineUserId); // ใช้ lineUserId เป็นตัวระบุผู้ป่วย
+
+    if (error) {
+      return res
+        .status(500)
+        .json({ message: "Error updating patient data", error: error.message });
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Patient data updated successfully", data });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err.message });
   }
-
-  // ตรวจสอบว่ามีข้อมูลที่จะอัปเดตหรือไม่
-  const updates = {};
-  if (name) updates.name = name;
-  if (email) updates.email = email;
-  if (tel) updates.tel = tel;
-  if (address) updates.address = address;
-  if (sickness) updates.sickness = sickness;
-  if (age) updates.age = age;
-  if (allergic) updates.allergic = allergic;
-
-  // อัปเดตข้อมูลใน Supabase
-  const { data, error } = await supabase
-    .from("patient")
-    .update(updates)
-    .eq("lineid", lineUserId); // ใช้ lineUserId เป็นตัวระบุผู้ป่วย
-
-  if (error) {
-    return res.status(500).json({ message: "Error updating patient data", error: error.message });
-  }
-
-  return res.status(200).json({ message: "Patient data updated successfully", data });
-} catch (err) {
-  return res.status(500).json({ message: "Server error", error: err.message });
-}
 });
 
-
 app.post("/add-patient", async (req, res) => {
-try {
-  const { name, age, lineid, allergic, sickness, address, tel, email, appointment_date } = req.body;
+  try {
+    const {
+      name,
+      age,
+      lineid,
+      allergic,
+      sickness,
+      address,
+      tel,
+      email,
+      appointment_date,
+    } = req.body;
 
-  const { data, error } = await supabase
-    .from("patient")
-    .insert([{ name, age, lineid, allergic, sickness, address, tel, email, appointment_date }])
-    .select();
+    const { data, error } = await supabase
+      .from("patient")
+      .insert([
+        {
+          name,
+          age,
+          lineid,
+          allergic,
+          sickness,
+          address,
+          tel,
+          email,
+          appointment_date,
+        },
+      ])
+      .select();
 
-  if (error) {
-    return res.status(500).json({ message: "Error adding patient", error: error.message });
+    if (error) {
+      return res
+        .status(500)
+        .json({ message: "Error adding patient", error: error.message });
+    }
+
+    res.status(201).json(data[0]);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-
-  res.status(201).json(data[0]);
-} catch (err) {
-  res.status(500).json({ message: "Server error", error: err.message });
-}
 });
 
 // API สำหรับลบผู้ป่วย
-app.delete("/delete-patient/:id", async (req, res) => {  // Use :id to capture the patient ID
+app.delete("/delete-patient/:id", async (req, res) => {
+  // Use :id to capture the patient ID
   const { id } = req.params;
 
   try {
@@ -543,12 +585,279 @@ app.delete("/delete-patient/:id", async (req, res) => {  // Use :id to capture t
       .eq("patient_id", id);
 
     if (error) {
-      return res.status(500).json({ message: "Error deleting patient", error: error.message });
+      return res
+        .status(500)
+        .json({ message: "Error deleting patient", error: error.message });
     }
 
     res.status(200).json({ message: "Patient deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+// ตั้งค่า Multer สำหรับการอัปโหลดไฟล์
+
+/*
+app.use(cookieParser());
+
+// ตั้งค่า Multer สำหรับการอัปโหลดไฟล์
+const upload = multer({ storage: multer.memoryStorage() });
+// Middleware สำหรับการตรวจสอบ JWT Token และดึงข้อมูลผู้ใช้
+app.use(async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1]; // หรืออาจใช้ req.headers.authorization สำหรับการตรวจสอบจาก header
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+
+  try {
+    const { data, error } = await supabase.auth.api.getUser(token);
+
+    if (error || !data) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    req.user = data; // เก็บข้อมูลผู้ใช้ลงใน request object
+    next();
+  } catch (err) {
+    console.error("JWT Verification Error:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// Endpoint สำหรับการอัปโหลดไฟล์
+app.post("/upload", upload.array("files"), async (req, res) => {
+  const files = req.files;
+  const patientId = req.body.patientId;
+  const user = req.user; // ดึงข้อมูลผู้ใช้จาก request object
+
+  try {
+    if (!files || files.length === 0) {
+      return res.status(400).json({ success: false, message: "No files uploaded." });
+    }
+
+    
+    
+    
+    
+
+    for (const file of files) {
+      const filePath = `patient_files/${patientId}/${Date.now()}_${file.originalname}`;
+
+      // อัปโหลดไฟล์ไปยัง Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("bucket888")
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype,
+        });
+
+      if (uploadError) {
+        console.error("Supabase Storage Upload Error:", uploadError);
+        return res.status(500).json({ success: false, message: `Failed to upload file: ${uploadError.message}` });
+      }
+
+      // บันทึกข้อมูลไฟล์ลงในตาราง patient_files
+      const { data: insertData, error: insertError } = await supabase
+        .from("patient_files")
+        .insert([
+          {
+            patient_id: patientId,
+            file_name: file.originalname,
+            file_type: file.mimetype,
+            file_path: filePath,
+            upload_date: new Date().toISOString(),
+          },
+        ]);
+
+      if (insertError) {
+        console.error("Supabase Insert Error:", insertError);
+        return res.status(500).json({ success: false, message: `Failed to save file info: ${insertError.message}` });
+      }
+    }
+
+    res.status(200).json({ success: true, message: "Files uploaded successfully." });
+  } catch (error) {
+    console.error("Server Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const storage = multer.memoryStorage(); // เก็บไฟล์ใน memory
+const upload = multer({ storage: storage });
+
+// สร้าง endpoint สำหรับอัปโหลดไฟล์
+app.post("/upload-file", upload.array('files'), async (req, res) => {
+  try {
+    // ตรวจสอบว่ามีไฟล์หรือไม่
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: "No files uploaded" });
+    }
+
+    // อัปโหลดไฟล์ไปยัง Supabase Storage
+    const patientID= req.body.patientId; // หรือจะรับค่า patientId จาก Body หรือ Params ก็ได้
+    const uploadPromises = req.files.map(async (file) => {
+      const { data, error } = await supabase
+        .storage
+        .from('bucket888') // ชื่อ bucket
+        .upload(`patient-${patientId}/${file.originalname}`, file.buffer); // อัปโหลดไฟล์ไปยัง path ที่กำหนด
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // หลังจากอัปโหลดเสร็จแล้ว เพิ่มข้อมูลลงในตาราง patient_files
+     
+     
+     
+     
+     
+     
+
+     
+     
+
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+
+      return data;
+    });
+
+    const uploadResults = await Promise.all(uploadPromises);
+
+    res.json({
+      success: true,
+      message: "Files uploaded successfully",
+      data: uploadResults, // ส่งข้อมูลที่อัปโหลดกลับไป
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error uploading files",
+    });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Endpoint สำหรับการลบไฟล์
+app.delete("/delete/:fileId", async (req, res) => {
+  const fileId = req.params.fileId;
+
+  try {
+    // ดึงข้อมูลไฟล์จากตาราง patient_files
+    const { data: fileData, error: fileError } = await supabase
+      .from("patient_files")
+      .select("file_path")
+      .eq("file_id", fileId)
+      .single();
+
+    if (fileError) {
+      throw new Error(`Failed to fetch file info: ${fileError.message}`);
+    }
+
+    // ลบไฟล์จาก Supabase Storage
+    const { data: deleteStorageData, error: deleteStorageError } =
+      await supabase.storage.from("bucket888").remove([fileData.file_path]);
+
+    if (deleteStorageError) {
+      throw new Error(
+        `Failed to delete file from storage: ${deleteStorageError.message}`
+      );
+    }
+
+    // ลบข้อมูลไฟล์จากตาราง patient_files
+    const { data: deleteData, error: deleteError } = await supabase
+      .from("patient_files")
+      .delete()
+      .eq("file_id", fileId);
+
+    if (deleteError) {
+      throw new Error(`Failed to delete file info: ${deleteError.message}`);
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "File deleted successfully." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
