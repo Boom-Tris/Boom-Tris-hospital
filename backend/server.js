@@ -604,6 +604,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  // Use cors once
 
 
+
  app.post("/upload-file", upload.array("files"), async (req, res) => {
   try {
     const files = req.files; // ไฟล์ที่อัปโหลด
@@ -614,25 +615,21 @@ const upload = multer({ storage: multer.memoryStorage() });
 
     // อัปโหลดไฟล์ไปยัง Supabase Storage
     for (const file of files) {
-      if (!file.path) {
-        console.error("File path is undefined:", file);
-        continue; // ข้ามไฟล์นี้ถ้าไม่มี path
-      }
-
       const filePath = `bucket888/${file.originalname}`;
-      const fileContent = fs.readFileSync(file.path); // อ่านไฟล์จาก path
 
+      // อัปโหลดไฟล์จาก Buffer
       const { data, error } = await supabase
         .storage
         .from("bucket888")
-        .upload(filePath, fileContent);
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype, // กำหนดประเภทไฟล์ (เช่น image/jpeg)
+        });
 
       if (error) {
         throw new Error(`Error uploading file ${file.originalname}: ${error.message}`);
       }
 
-      // ลบไฟล์ชั่วคราวหลังจากอัปโหลดเสร็จ
-      fs.unlinkSync(file.path);
+      console.log(`File ${file.originalname} uploaded successfully:`, data);
     }
 
     res.status(200).json({ success: true, message: "Files uploaded successfully!" });
@@ -641,7 +638,6 @@ const upload = multer({ storage: multer.memoryStorage() });
     res.status(500).json({ success: false, message: "Error uploading files" });
   }
 });
-
 
 app.delete("/delete/:fileId", async (req, res) => {
   const fileId = req.params.fileId;
