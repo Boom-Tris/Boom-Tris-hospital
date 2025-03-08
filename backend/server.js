@@ -11,7 +11,12 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs");
 const winston = require("winston");
-const cookieParser  =require("cookie-parser");
+const cookieParser = require("cookie-parser");
+const cron = require("node-cron");
+const dayjs = require("dayjs");
+const isBetween = require("dayjs/plugin/isBetween");
+dayjs.extend(isBetween);
+const moment = require('moment'); 
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,7 +60,7 @@ app.use(limiter);
 const corsOptions = {
   origin: process.env.CORS_ALLOWED_ORIGINS?.split(",") || "*",
   methods: ["GET", "POST", "DELETE", "PUT"],
-  credentials: true, 
+  credentials: true,
   allowedHeaders: "Content-Type,Authorization",
 };
 app.use(cors(corsOptions));
@@ -128,10 +133,7 @@ app.post("/login", async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: "2h" }
           );
-            
-            
-             
-            
+
           // ตั้งค่า cookie เป็น HTTP-only
           res.cookie("token", token, {
             httpOnly: true, // ป้องกันการเข้าถึงจาก JavaScript
@@ -358,25 +360,33 @@ const verifySignature = (req) => {
 // ✅ ดึงข้อมูลผู้ใช้จาก LINE Webhook
 app.post("/webhook", async (req, res) => {
   try {
+    console.log("📩 Received Webhook:", JSON.stringify(req.body, null, 2));
+
     // ✅ ตรวจสอบความปลอดภัย
     verifySignature(req);
 
     // ✅ รับข้อมูล events จาก body
     const events = req.body.events;
-    if (!events || events.length === 0)
+    if (!events || events.length === 0) {
+      console.log("⚠️ No events received");
       return res.status(400).send("No events received");
+    }
 
     for (const event of events) {
+      console.log("🔍 Processing event:", event);
       const messageText = event.message?.text?.trim();
+
       if (messageText && event.message.type === "text") {
         await handleUserMessage(event, messageText);
       } else {
+        console.log("✅ Non-text message received");
         return res.status(200).send("OK");
       }
     }
 
     res.status(200).send("OK");
   } catch (error) {
+    console.error("❌ Server error:", error);
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
@@ -596,21 +606,19 @@ app.delete("/delete-patient/:id", async (req, res) => {
   }
 });
 
-
 const storage = multer.memoryStorage();
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Use cors once
 
- // Use cors once
-
-
-
- app.post("/upload-file", upload.array("files"), async (req, res) => {
+app.post("/upload-file", upload.array("files"), async (req, res) => {
   try {
     const files = req.files; // ไฟล์ที่อัปโหลด
 
     if (!files || files.length === 0) {
-      return res.status(400).json({ success: false, message: "No files uploaded" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No files uploaded" });
     }
 
     // อัปโหลดไฟล์ไปยัง Supabase Storage
@@ -618,21 +626,24 @@ const upload = multer({ storage: multer.memoryStorage() });
       const filePath = `bucket888/${file.originalname}`;
 
       // อัปโหลดไฟล์จาก Buffer
-      const { data, error } = await supabase
-        .storage
+      const { data, error } = await supabase.storage
         .from("bucket888")
         .upload(filePath, file.buffer, {
           contentType: file.mimetype, // กำหนดประเภทไฟล์ (เช่น image/jpeg)
         });
 
       if (error) {
-        throw new Error(`Error uploading file ${file.originalname}: ${error.message}`);
+        throw new Error(
+          `Error uploading file ${file.originalname}: ${error.message}`
+        );
       }
 
       console.log(`File ${file.originalname} uploaded successfully:`, data);
     }
 
-    res.status(200).json({ success: true, message: "Files uploaded successfully!" });
+    res
+      .status(200)
+      .json({ success: true, message: "Files uploaded successfully!" });
   } catch (error) {
     console.error("Error uploading files:", error);
     res.status(500).json({ success: false, message: "Error uploading files" });
@@ -681,6 +692,113 @@ app.delete("/delete/:fileId", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+
+
+// ฟังก์ชั่นสำหรับดึงข้อมูลจาก Supabase (กรองวันนัด)
+async function getAppointmentData() {
+  const today = dayjs().format("YYYY-MM-DD"); // วันที่วันนี้
+  const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD"); // วันที่พรุ่งนี้
+
+  const { data, error } = await supabase
+    .from("patient")
+    .select(
+      "name, patient_id, lineid, appointment_date, reminder_time, appointment_details"
+    )
+    .in("appointment_date", [today, tomorrow]) // กรองเฉพาะวันนี้และพรุ่งนี้
+    .not("reminder_time", "is", null); // ต้องมีเวลาแจ้งเตือน
+
+  if (error) {
+    console.error("❌ Error fetching appointment data:", error);
+    return [];
+  }
+
+  console.log("✅ Appointments data (Filtered):", data);
+  return data;
+}
+
+// ฟังก์ชั่นส่งข้อความไปยัง LINE OA
+async function sendLineAppointment(userId, message) {
+  try {
+    await axios.post(
+      "https://api.line.me/v2/bot/message/push",
+      {
+        to: userId,
+        messages: [{ type: "text", text: message }],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${LINE_ACCESS_TOKEN}`,
+        },
+      }
+    );
+    console.log(`✅ ส่งแจ้งเตือนสำเร็จถึง ${userId}`);
+    return true;
+  } catch (error) {
+    console.error(
+      `❌ ส่งแจ้งเตือนล้มเหลวถึง ${userId}:`,
+      error.response?.data || error.message
+    );
+    return false;
+  }
+}
+
+const sentReminders = new Set(); // ใช้เก็บ patient_id ที่แจ้งเตือนแล้ว
+
+// ฟังก์ชันตรวจสอบเวลาการแจ้งเตือน
+function isTimeToNotify(reminderTime) {
+  const now = dayjs(); // ใช้ dayjs ในการตรวจสอบเวลาปัจจุบัน
+  const reminderMoment = dayjs(reminderTime, "HH:mm:ss"); // เวลาแจ้งเตือนจากฐานข้อมูล
+
+  // เปรียบเทียบเวลาปัจจุบันกับเวลาการแจ้งเตือน
+  return now.isSame(reminderMoment, 'minute');
+}
+
+// ฟังก์ชันสำหรับการตรวจสอบและส่งแจ้งเตือน
+async function checkAndSendReminders() {
+  try {
+    const today = dayjs().format("YYYY-MM-DD");
+    const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
+    const appointments = await getAppointmentData(); // ดึงข้อมูลการนัดหมาย
+
+    // กรองเฉพาะการนัดหมายที่ต้องแจ้งเตือน
+    const filteredAppointments = appointments.filter((appointment) => {
+      const appointmentDate = dayjs(appointment.appointment_date).format("YYYY-MM-DD");
+      return (appointmentDate === today || appointmentDate === tomorrow) &&
+             !sentReminders.has(appointment.patient_id); // ยังไม่เคยแจ้งเตือน
+    });
+
+    // ส่งแจ้งเตือนสำหรับการนัดที่ต้องแจ้งเตือน
+    for (const appointment of filteredAppointments) {
+      if (appointment.lineid && isTimeToNotify(appointment.reminder_time)) {
+        console.log(`Sending reminder for ${appointment.lineid}`);
+        const isSent = await sendLineAppointment(appointment.lineid, appointment.appointment_details);
+
+        if (isSent) {
+          sentReminders.add(appointment.patient_id); // บันทึกว่าผู้ป่วยนี้ได้รับแจ้งเตือนแล้ว
+        }
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error in checkAndSendReminders:", error);
+  }
+}
+
+const targetTime = dayjs().hour(15).minute(58).second(0); // ตั้งเวลาที่ต้องการ
+const now = dayjs(); // ใช้ dayjs สำหรับการหาความแตกต่างระหว่างเวลา
+const delay = targetTime.diff(now, 'millisecond'); // หาค่าความแตกต่างเป็นมิลลิวินาที
+
+if (delay > 0) {
+  console.log(`✅ ระบบตั้งเวลาส่งแจ้งเตือนครั้งเดียวที่ 15:35 น.`);
+  setTimeout(async () => {
+    console.log("⏳ Running reminder at 15:35...");
+    await checkAndSendReminders();
+    console.log("✅ Reminder sent. Process complete.");
+  }, delay);
+} else {
+  console.log("❌ เวลาที่ตั้งค่าไว้ผ่านไปแล้ว! ต้องรอพรุ่งนี้หรือแก้ไขเวลาใหม่.");
+}
 
 // ✅ เริ่มเซิร์ฟเวอร์
 app.listen(PORT, () => {
