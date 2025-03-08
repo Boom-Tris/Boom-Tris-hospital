@@ -575,26 +575,45 @@ app.post("/add-patient", async (req, res) => {
 
 // API สำหรับลบผู้ป่วย
 app.delete("/delete-patient/:id", async (req, res) => {
-  // Use :id to capture the patient ID
   const { id } = req.params;
-
   try {
-    const { error } = await supabase
-      .from("patient")
-      .delete()
-      .eq("patient_id", id);
+      const { error } = await supabase
+          .from("patient")
+          .delete()
+          .eq("patient_id", id);
 
-    if (error) {
-      return res
-        .status(500)
-        .json({ message: "Error deleting patient", error: error.message });
-    }
+      if (error) {
+          return res.status(500).json({ message: "Error deleting patient", error: error.message });
+      }
 
-    res.status(200).json({ message: "Patient deleted successfully" });
+      res.status(200).json({ message: "Patient deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+      res.status(500).json({ message: "Server error", error: err.message });
   }
 });
+app.delete("/delete-patients", async (req, res) => {
+  try {
+      const { patientIds } = req.body;
+      if (!patientIds || !Array.isArray(patientIds) || patientIds.length === 0) {
+          return res.status(400).json({ message: "Invalid patient IDs" });
+      }
+
+      const { error } = await supabase
+          .from("patient")
+          .delete()
+          .in("patient_id", patientIds);
+
+      if (error) {
+          return res.status(500).json({ message: "Error deleting patients", error: error.message });
+      }
+
+      res.status(200).json({ message: "Patients deleted successfully" });
+  } catch (err) {
+      res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+
 
 
 const storage = multer.memoryStorage();
