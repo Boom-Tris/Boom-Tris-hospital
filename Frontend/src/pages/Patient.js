@@ -520,14 +520,8 @@ const Patient = () => {
         slotProps={{ inputLabel: { shrink: true } }}
         fullWidth 
       />
-      <TextField 
-        label="LINE ID" 
-        value={selectedPatient?.lineid || ''} 
-        onChange={(e) => setSelectedPatient({ ...selectedPatient, lineid: e.target.value })} 
-        variant="outlined"
-        slotProps={{ inputLabel: { shrink: true } }}
-        fullWidth 
-      />
+ 
+
       <TextField 
         label="อาการแพ้" 
         value={selectedPatient?.allergic || ''} 

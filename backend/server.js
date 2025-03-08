@@ -694,8 +694,6 @@ app.delete("/delete/:fileId", async (req, res) => {
 });
 
 
-
-// ฟังก์ชั่นสำหรับดึงข้อมูลจาก Supabase (กรองวันนัด)
 async function getAppointmentData() {
   const today = dayjs().format("YYYY-MM-DD"); // วันที่วันนี้
   const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD"); // วันที่พรุ่งนี้
@@ -717,87 +715,50 @@ async function getAppointmentData() {
   return data;
 }
 
-// ฟังก์ชั่นส่งข้อความไปยัง LINE OA
+const TARGET_USER_ID = 'U2cf45250a015cd70f9b33d6b2e20257';
 async function sendLineAppointment(userId, message) {
   try {
     await axios.post(
-      "https://api.line.me/v2/bot/message/push",
+      'https://api.line.me/v2/bot/message/push',
       {
         to: userId,
-        messages: [{ type: "text", text: message }],
+        messages: [{ type: 'text', text: message }],
       },
       {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${LINE_ACCESS_TOKEN}`,
         },
       }
     );
     console.log(`✅ ส่งแจ้งเตือนสำเร็จถึง ${userId}`);
-    return true;
   } catch (error) {
-    console.error(
-      `❌ ส่งแจ้งเตือนล้มเหลวถึง ${userId}:`,
-      error.response?.data || error.message
-    );
-    return false;
+    console.error(`❌ ส่งแจ้งเตือนล้มเหลวถึง ${userId}:`, error.response?.data || error.message);
   }
 }
 
-const sentReminders = new Set(); // ใช้เก็บ patient_id ที่แจ้งเตือนแล้ว
+// คำนวณเวลาปัจจุบันและเวลาที่ต้องการรัน (17:02 น.)
+const now = dayjs();
+const targetTime = dayjs().hour(17).minute(9).second(0);
 
-// ฟังก์ชันตรวจสอบเวลาการแจ้งเตือน
-function isTimeToNotify(reminderTime) {
-  const now = dayjs(); // ใช้ dayjs ในการตรวจสอบเวลาปัจจุบัน
-  const reminderMoment = dayjs(reminderTime, "HH:mm:ss"); // เวลาแจ้งเตือนจากฐานข้อมูล
-
-  // เปรียบเทียบเวลาปัจจุบันกับเวลาการแจ้งเตือน
-  return now.isSame(reminderMoment, 'minute');
-}
-
-// ฟังก์ชันสำหรับการตรวจสอบและส่งแจ้งเตือน
-async function checkAndSendReminders() {
-  try {
-    const today = dayjs().format("YYYY-MM-DD");
-    const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
-    const appointments = await getAppointmentData(); // ดึงข้อมูลการนัดหมาย
-
-    // กรองเฉพาะการนัดหมายที่ต้องแจ้งเตือน
-    const filteredAppointments = appointments.filter((appointment) => {
-      const appointmentDate = dayjs(appointment.appointment_date).format("YYYY-MM-DD");
-      return (appointmentDate === today || appointmentDate === tomorrow) &&
-             !sentReminders.has(appointment.patient_id); // ยังไม่เคยแจ้งเตือน
-    });
-
-    // ส่งแจ้งเตือนสำหรับการนัดที่ต้องแจ้งเตือน
-    for (const appointment of filteredAppointments) {
-      if (appointment.lineid && isTimeToNotify(appointment.reminder_time)) {
-        console.log(`Sending reminder for ${appointment.lineid}`);
-        const isSent = await sendLineAppointment(appointment.lineid, appointment.appointment_details);
-
-        if (isSent) {
-          sentReminders.add(appointment.patient_id); // บันทึกว่าผู้ป่วยนี้ได้รับแจ้งเตือนแล้ว
-        }
-      }
-    }
-  } catch (error) {
-    console.error("❌ Error in checkAndSendReminders:", error);
-  }
-}
-
-const targetTime = dayjs().hour(15).minute(58).second(0); // ตั้งเวลาที่ต้องการ
-const now = dayjs(); // ใช้ dayjs สำหรับการหาความแตกต่างระหว่างเวลา
-const delay = targetTime.diff(now, 'millisecond'); // หาค่าความแตกต่างเป็นมิลลิวินาที
+// คำนวณระยะเวลารอ (หน่วยเป็นมิลลิวินาที)
+const delay = targetTime.diff(now);
 
 if (delay > 0) {
-  console.log(`✅ ระบบตั้งเวลาส่งแจ้งเตือนครั้งเดียวที่ 15:35 น.`);
+  console.log(`✅ ระบบตั้งเวลาส่งแจ้งเตือนครั้งเดียวที่ 17:09 น.`);
+
   setTimeout(async () => {
-    console.log("⏳ Running reminder at 15:35...");
-    await checkAndSendReminders();
-    console.log("✅ Reminder sent. Process complete.");
+    console.log('⏳ กำลังส่งแจ้งเตือน...');
+    // ข้อความที่ต้องการส่ง
+    const message = 'นี่คือข้อความแจ้งเตือนของคุณ';
+
+    // ส่งข้อความไปยังผู้ใช้ที่กำหนด
+    await sendLineAppointment(TARGET_USER_ID, message);
+
+    console.log('✅ ส่งแจ้งเตือนเสร็จสิ้น');
   }, delay);
 } else {
-  console.log("❌ เวลาที่ตั้งค่าไว้ผ่านไปแล้ว! ต้องรอพรุ่งนี้หรือแก้ไขเวลาใหม่.");
+  console.log('❌ เวลาที่ตั้งค่าไว้ผ่านไปแล้ว! ต้องรอพรุ่งนี้หรือแก้ไขเวลาใหม่.');
 }
 
 // ✅ เริ่มเซิร์ฟเวอร์
