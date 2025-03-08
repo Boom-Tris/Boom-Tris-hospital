@@ -16,7 +16,7 @@ const cron = require("node-cron");
 const dayjs = require("dayjs");
 const isBetween = require("dayjs/plugin/isBetween");
 dayjs.extend(isBetween);
-const moment = require('moment'); 
+const moment = require("moment");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -693,73 +693,89 @@ app.delete("/delete/:fileId", async (req, res) => {
   }
 });
 
-
-async function getAppointmentData() {
-  const today = dayjs().format("YYYY-MM-DD"); // วันที่วันนี้
-  const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD"); // วันที่พรุ่งนี้
-
-  const { data, error } = await supabase
-    .from("patient")
-    .select(
-      "name, patient_id, lineid, appointment_date, reminder_time, appointment_details"
-    )
-    .in("appointment_date", [today, tomorrow]) // กรองเฉพาะวันนี้และพรุ่งนี้
-    .not("reminder_time", "is", null); // ต้องมีเวลาแจ้งเตือน
-
-  if (error) {
-    console.error("❌ Error fetching appointment data:", error);
-    return [];
-  }
-
-  console.log("✅ Appointments data (Filtered):", data);
-  return data;
-}
-
-const TARGET_USER_ID = 'U2cf45250a015cd70f9b33d6b2e20257';
 async function sendLineAppointment(userId, message) {
   try {
     await axios.post(
-      'https://api.line.me/v2/bot/message/push',
+      "https://api.line.me/v2/bot/message/push",
       {
         to: userId,
-        messages: [{ type: 'text', text: message }],
+        messages: [{ type: "text", text: message }],
       },
       {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${LINE_ACCESS_TOKEN}`,
         },
       }
     );
     console.log(`✅ ส่งแจ้งเตือนสำเร็จถึง ${userId}`);
   } catch (error) {
-    console.error(`❌ ส่งแจ้งเตือนล้มเหลวถึง ${userId}:`, error.response?.data || error.message);
+    console.error(
+      `❌ ส่งแจ้งเตือนล้มเหลวถึง ${userId}:`,
+      error.response?.data || error.message
+    );
   }
 }
 
-// คำนวณเวลาปัจจุบันและเวลาที่ต้องการรัน (17:02 น.)
-const now = dayjs();
-const targetTime = dayjs().hour(17).minute(9).second(0);
+async function getPatientData() {
+  const { data, error } = await supabase
+    .from("patient") // ชื่อตารางใน Supabase
+    .select("name, lineid, reminder_time, appointment_date"); // เลือกคอลัมน์ที่ต้องการ
 
-// คำนวณระยะเวลารอ (หน่วยเป็นมิลลิวินาที)
-const delay = targetTime.diff(now);
+  if (error) {
+    console.error("Error fetching patient data:", error);
+    return [];
+  }
 
-if (delay > 0) {
-  console.log(`✅ ระบบตั้งเวลาส่งแจ้งเตือนครั้งเดียวที่ 17:09 น.`);
-
-  setTimeout(async () => {
-    console.log('⏳ กำลังส่งแจ้งเตือน...');
-    // ข้อความที่ต้องการส่ง
-    const message = 'นี่คือข้อความแจ้งเตือนของคุณ';
-
-    // ส่งข้อความไปยังผู้ใช้ที่กำหนด
-    await sendLineAppointment(TARGET_USER_ID, message);
-
-    console.log('✅ ส่งแจ้งเตือนเสร็จสิ้น');
-  }, delay);
-} else {
-  console.log('❌ เวลาที่ตั้งค่าไว้ผ่านไปแล้ว! ต้องรอพรุ่งนี้หรือแก้ไขเวลาใหม่.');
+  return data; // คืนค่าข้อมูลผู้ป่วย
 }
+
+// ฟังก์ชันการคำนวณและส่งแจ้งเตือน
+async function sendNotifications() {
+  const today = dayjs().format("YYYY-MM-DD");
+  const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
+
+  const patients = await getPatientData(); // ดึงข้อมูลผู้ป่วยจาก Supabase
+
+  const patientsToNotify = patients.filter(
+    (patient) =>
+      patient.lineid &&
+      patient.reminder_time &&
+      patient.appointment_date &&
+      (patient.appointment_date === today ||
+        patient.appointment_date === tomorrow)
+  );
+
+  console.log("📌 ผู้ป่วยที่ต้องแจ้งเตือน:", patientsToNotify);
+
+  // ส่งแจ้งเตือนตามเวลา
+  for (const patient of patientsToNotify) {
+    const { lineid, reminder_time, appointment_date } = patient;
+    const [hours, minutes, seconds] = reminder_time.split(":");
+    const reminderDateTime = dayjs(
+      `${appointment_date} ${hours}:${minutes}:${seconds}`
+    );
+
+    // คำนวณระยะเวลาที่ต้องรอ (มิลลิวินาที)
+    const delay = reminderDateTime.diff(dayjs());
+
+    if (delay > 0) {
+      console.log(
+        `⏳ กำลังตั้งเวลาส่งแจ้งเตือนให้ ${patient.name} ในเวลา ${reminder_time}`
+      );
+
+      setTimeout(async () => {
+        const message = `แจ้งเตือน: คุณมีนัดหมายในวันที่ ${appointment_date} เวลา ${reminder_time}`;
+        await sendLineAppointment(lineid, message); // ส่งข้อความไปยัง LINE
+      }, delay);
+    } else {
+      console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${patient.name}`);
+    }
+  }
+}
+
+// เรียกใช้ฟังก์ชัน
+sendNotifications();
 
 // ✅ เริ่มเซิร์ฟเวอร์
 app.listen(PORT, () => {
