@@ -11,7 +11,12 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs");
 const winston = require("winston");
-const cookieParser  =require("cookie-parser");
+const cookieParser = require("cookie-parser");
+const cron = require("node-cron");
+const dayjs = require("dayjs");
+const isBetween = require("dayjs/plugin/isBetween");
+dayjs.extend(isBetween);
+const moment = require("moment");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,6 +41,12 @@ const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
 app.use(helmet());
 app.set("trust proxy", 1); // เปิดใช้งาน trust proxy
 
+
+
+// ใช้ middleware สำหรับ parsing JSON และ URL-encoded data
+app.use(express.json()); // ใช้สำหรับ parsing JSON body
+app.use(express.urlencoded({ extended: true })); // ใช้สำหรับ parsing x-www-form-urlencoded body
+
 // ตั้งค่า winston logger
 const logger = winston.createLogger({
   level: "info",
@@ -55,7 +66,7 @@ app.use(limiter);
 const corsOptions = {
   origin: process.env.CORS_ALLOWED_ORIGINS?.split(",") || "*",
   methods: ["GET", "POST", "DELETE", "PUT"],
-  credentials: true, 
+  credentials: true,
   allowedHeaders: "Content-Type,Authorization",
 };
 app.use(cors(corsOptions));
@@ -128,10 +139,7 @@ app.post("/login", async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: "2h" }
           );
-            
-            
-             
-            
+
           // ตั้งค่า cookie เป็น HTTP-only
           res.cookie("token", token, {
             httpOnly: true, // ป้องกันการเข้าถึงจาก JavaScript
@@ -358,25 +366,33 @@ const verifySignature = (req) => {
 // ✅ ดึงข้อมูลผู้ใช้จาก LINE Webhook
 app.post("/webhook", async (req, res) => {
   try {
+    console.log("📩 Received Webhook:", JSON.stringify(req.body, null, 2));
+
     // ✅ ตรวจสอบความปลอดภัย
     verifySignature(req);
 
     // ✅ รับข้อมูล events จาก body
     const events = req.body.events;
-    if (!events || events.length === 0)
+    if (!events || events.length === 0) {
+      console.log("⚠️ No events received");
       return res.status(400).send("No events received");
+    }
 
     for (const event of events) {
+      console.log("🔍 Processing event:", event);
       const messageText = event.message?.text?.trim();
+
       if (messageText && event.message.type === "text") {
         await handleUserMessage(event, messageText);
       } else {
+        console.log("✅ Non-text message received");
         return res.status(200).send("OK");
       }
     }
 
     res.status(200).send("OK");
   } catch (error) {
+    console.error("❌ Server error:", error);
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
@@ -615,49 +631,84 @@ app.delete("/delete-patients", async (req, res) => {
 
 
 
-
 const storage = multer.memoryStorage();
 const upload = multer({ storage: multer.memoryStorage() });
 
-
- // Use cors once
-
-
-
- app.post("/upload-file", upload.array("files"), async (req, res) => {
+app.post("/upload-file", upload.array("files"), async (req, res) => {
   try {
-    const files = req.files; // ไฟล์ที่อัปโหลด
+    const { patient_id } = req.body; // รับเฉพาะ patient_id
+    const files = req.files; // รับไฟล์ที่อัปโหลด
 
+    // ตรวจสอบว่า patient_id มีค่าหรือไม่
+    if (!patient_id) {
+      return res.status(400).json({ success: false, message: "Missing patient_id" });
+    }
+
+    // ตรวจสอบว่าไฟล์ถูกส่งมาหรือไม่
     if (!files || files.length === 0) {
       return res.status(400).json({ success: false, message: "No files uploaded" });
     }
 
-    // อัปโหลดไฟล์ไปยัง Supabase Storage
+    console.log(`patient_id: ${patient_id}`);
+
+    // ตรวจสอบว่า patient_id มีอยู่ในฐานข้อมูลหรือไม่
+    const { data: patient, error: patientError } = await supabase
+      .from("patient")
+      .select("id")
+      .eq("id", patient_id)
+      .single();
+
+    if (patientError || !patient) {
+      return res.status(400).json({ success: false, message: "Invalid patient_id" });
+    }
+
+    // อัปโหลดไฟล์ (ถ้าต้องการ)
     for (const file of files) {
       const filePath = `bucket888/${file.originalname}`;
-
-      // อัปโหลดไฟล์จาก Buffer
-      const { data, error } = await supabase
-        .storage
+      const { data, error } = await supabase.storage
         .from("bucket888")
         .upload(filePath, file.buffer, {
-          contentType: file.mimetype, // กำหนดประเภทไฟล์ (เช่น image/jpeg)
+          contentType: file.mimetype,
         });
 
       if (error) {
+        // บันทึกข้อผิดพลาดลงในตาราง upload_logs
+        await supabase.from("upload_logs").insert([{
+          file_name: file.originalname,
+          file_path: filePath,
+          status: "failed",
+          error_message: error.message,
+          patient_id: patient_id,
+        }]);
+
         throw new Error(`Error uploading file ${file.originalname}: ${error.message}`);
       }
 
-      console.log(`File ${file.originalname} uploaded successfully:`, data);
+      // บันทึกข้อมูลลงในตาราง upload_logs
+      await supabase.from("upload_logs").insert([{
+        file_name: file.originalname,
+        file_path: filePath,
+        status: "success",
+        patient_id: patient_id,
+      }]);
     }
 
-    res.status(200).json({ success: true, message: "Files uploaded successfully!" });
+    res.status(200).json({ success: true, message: "Files uploaded and log recorded successfully!" });
   } catch (error) {
-    console.error("Error uploading files:", error);
-    res.status(500).json({ success: false, message: "Error uploading files" });
+    console.error("Error uploading files or recording log:", error);
+
+    // บันทึกข้อผิดพลาดลงในตาราง upload_logs
+    if (req.body.patient_id) {
+      await supabase.from("upload_logs").insert([{
+        patient_id: req.body.patient_id,
+        status: "failed",
+        error_message: error.message,
+      }]);
+    }
+
+    res.status(500).json({ success: false, message: "Error uploading files or recording log" });
   }
 });
-
 app.delete("/delete/:fileId", async (req, res) => {
   const fileId = req.params.fileId;
 
@@ -700,6 +751,90 @@ app.delete("/delete/:fileId", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+async function sendLineAppointment(userId, message) {
+  try {
+    await axios.post(
+      "https://api.line.me/v2/bot/message/push",
+      {
+        to: userId,
+        messages: [{ type: "text", text: message }],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${LINE_ACCESS_TOKEN}`,
+        },
+      }
+    );
+    console.log(`✅ ส่งแจ้งเตือนสำเร็จถึง ${userId}`);
+  } catch (error) {
+    console.error(
+      `❌ ส่งแจ้งเตือนล้มเหลวถึง ${userId}:`,
+      error.response?.data || error.message
+    );
+  }
+}
+
+async function getPatientData() {
+  const { data, error } = await supabase
+    .from("patient") // ชื่อตารางใน Supabase
+    .select("name, lineid, reminder_time, appointment_date"); // เลือกคอลัมน์ที่ต้องการ
+
+  if (error) {
+    console.error("Error fetching patient data:", error);
+    return [];
+  }
+
+  return data; // คืนค่าข้อมูลผู้ป่วย
+}
+
+// ฟังก์ชันการคำนวณและส่งแจ้งเตือน
+async function sendNotifications() {
+  const today = dayjs().format("YYYY-MM-DD");
+  const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
+
+  const patients = await getPatientData(); // ดึงข้อมูลผู้ป่วยจาก Supabase
+
+  const patientsToNotify = patients.filter(
+    (patient) =>
+      patient.lineid &&
+      patient.reminder_time &&
+      patient.appointment_date &&
+      (patient.appointment_date === today ||
+        patient.appointment_date === tomorrow)
+  );
+
+  console.log("📌 ผู้ป่วยที่ต้องแจ้งเตือน:", patientsToNotify);
+
+  // ส่งแจ้งเตือนตามเวลา
+  for (const patient of patientsToNotify) {
+    const { lineid, reminder_time, appointment_date } = patient;
+    const [hours, minutes, seconds] = reminder_time.split(":");
+    const reminderDateTime = dayjs(
+      `${appointment_date} ${hours}:${minutes}:${seconds}`
+    );
+
+    // คำนวณระยะเวลาที่ต้องรอ (มิลลิวินาที)
+    const delay = reminderDateTime.diff(dayjs());
+
+    if (delay > 0) {
+      console.log(
+        `⏳ กำลังตั้งเวลาส่งแจ้งเตือนให้ ${patient.name} ในเวลา ${reminder_time}`
+      );
+
+      setTimeout(async () => {
+        const message = `แจ้งเตือน: คุณมีนัดหมายในวันที่ ${appointment_date} เวลา ${reminder_time}`;
+        await sendLineAppointment(lineid, message); // ส่งข้อความไปยัง LINE
+      }, delay);
+    } else {
+      console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${patient.name}`);
+    }
+  }
+}
+
+// เรียกใช้ฟังก์ชัน
+sendNotifications();
 
 // ✅ เริ่มเซิร์ฟเวอร์
 app.listen(PORT, () => {
