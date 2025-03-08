@@ -19,9 +19,10 @@ import { format } from "date-fns";
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
 import { Snackbar, Alert } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-
+import axios from "axios";
 const Upload = () => {
   const [patientName, setPatientName] = useState("");
+  const [patientId, setPatientId] = useState("");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState(null);
@@ -110,52 +111,63 @@ const Upload = () => {
   const handleFileChange = (event) => {
     setFiles(Array.from(event.target.files)); // Ensure it's an array
   };
-
   const handleUploadFiles = async (files) => {
     if (!files || files.length === 0) {
-      console.log('No files to upload');
-      return; // ไม่มีไฟล์ที่จะอัปโหลด
+      console.log("No files to upload");
+      return;
+    }
+  
+    // ตรวจสอบค่าที่จะส่ง
+    if (!patientId) {
+      console.log("Missing required field: patientId");
+      return;
     }
   
     try {
-      setUploading(true); // เริ่มการอัปโหลด
+      setUploading(true);
   
-      // สร้าง FormData object เพื่อส่งไฟล์ไปยัง API
+      // สร้าง FormData
       const formData = new FormData();
       files.forEach((file) => {
-        formData.append("files", file); // ใช้ key เป็น "files" เพื่อส่งไฟล์
+        formData.append("files", file); // เพิ่มไฟล์
       });
+      formData.append("patient_id", patientId); // เพิ่ม patient_id
   
-      // ส่งไฟล์ไปยัง API ที่ http://localhost:3001/upload-file
+      // ตรวจสอบว่า FormData มีข้อมูลครบถ้วน
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ": " + pair[1]); // ตรวจสอบข้อมูลที่ส่งไป
+      }
+  
+      // ส่งคำขอไปที่เซิร์ฟเวอร์
       const response = await fetch("http://localhost:3001/upload-file", {
         method: "POST",
-        body: formData, // ส่ง FormData ที่มีไฟล์
+        body: formData,
       });
   
-      // ตรวจสอบว่าการอัปโหลดสำเร็จหรือไม่
       if (!response.ok) {
         throw new Error("File upload failed");
       }
   
-      const result = await response.json(); // รับผลลัพธ์จาก API
+      const result = await response.json();
       console.log("Upload result:", result);
   
       setSnackbar({
         open: true,
-        message: "Files uploaded successfully!",
+        message: "Files uploaded and log recorded successfully!",
         severity: "success",
       });
     } catch (error) {
-      console.error('Error uploading files:', error);
+      console.error("Error uploading files:", error);
       setSnackbar({
         open: true,
         message: "Error uploading files. Please check the console for details.",
         severity: "error",
       });
     } finally {
-      setUploading(false); // หยุดการอัปโหลด
+      setUploading(false);
     }
   };
+  
   const handleDeleteFile = async (fileId) => {
     try {
       const response = await fetch(`http://localhost:3001/delete/${fileId}`, {
