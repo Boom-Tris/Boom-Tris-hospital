@@ -298,12 +298,12 @@ const Upload = () => {
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="h6">Search Results</Typography>
-              <List sx={{ maxHeight: 500, overflowY: "auto" }}>
+              <List sx={{ maxHeight: 650, overflowY: "auto" }}>
                 {patients.map((patient) => (
                   <ListItem key={patient.patient_id}>
                     <ListItemText
                       secondary={
-                        <>
+                        <Box>
                           <Typography variant="body2">
                             Name: {patient.name}
                           </Typography>
@@ -353,9 +353,10 @@ const Upload = () => {
                             {patient.notification_details || "Not available"}
                           </Typography>
 
-                          <Typography variant="h6" sx={{ marginTop: 2, marginBottom: 2 }}>
-                            Appointment
-                          </Typography>
+                          <Box sx={{ marginTop: 2, marginBottom: 2 }}>
+                            <Typography variant="h6">Appointment</Typography>
+                          </Box>
+
                           <DatePicker
                             value={appointmentDate}
                             onChange={(newDate) => setAppointmentDate(newDate)}
@@ -390,9 +391,13 @@ const Upload = () => {
                             }}
                             renderInput={(params) => <TextField {...params} />}
                           />
-                          <Typography variant="h6" sx={{ marginTop: 2 }}>
-                            Notification Duration
-                          </Typography>
+
+                          <Box sx={{ marginTop: 2 }}>
+                            <Typography variant="h6">
+                              Notification Duration
+                            </Typography>
+                          </Box>
+
                           <TextField
                             label="Notification Duration ( 1 day, 2 weeks, 3 months)"
                             fullWidth
@@ -423,9 +428,11 @@ const Upload = () => {
                             }}
                             renderInput={(params) => <TextField {...params} />}
                           />
-                          <Typography variant="h6" sx={{ marginTop: 2 }}>
-                            Uploaded Files
-                          </Typography>
+
+                          <Box sx={{ marginTop: 2 }}>
+                            <Typography variant="h6">Uploaded Files</Typography>
+                          </Box>
+
                           <input
                             type="file"
                             multiple
@@ -449,7 +456,7 @@ const Upload = () => {
                             )}
                           </Button>
                           <List>{renderPatientFiles(patient)}</List>
-                        </>
+                        </Box>
                       }
                     />
                   </ListItem>
