@@ -60,6 +60,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ป้องกัน SQL Injection และตรวจสอบข้อมูลก่อนใช้งาน
 const sanitizeInput = (input) => {
@@ -603,36 +604,71 @@ const upload = multer({ storage: multer.memoryStorage() });
 
  // Use cors once
 
-
-
  app.post("/upload-file", upload.array("files"), async (req, res) => {
   try {
-    const files = req.files; // ไฟล์ที่อัปโหลด
+    const files = req.files;
+    const { patient_id } = req.body; // รับค่าจาก FormData
+    console.log("Received patient_id:", req.body.patient_id); // ✅ Log ตรวจสอบค่าที่รับมา
+    console.log("Received patient_id:", patient_id); // ✅ Log ตรวจสอบค่าที่รับมา
 
     if (!files || files.length === 0) {
       return res.status(400).json({ success: false, message: "No files uploaded" });
     }
 
-    // อัปโหลดไฟล์ไปยัง Supabase Storage
-    for (const file of files) {
-      const filePath = `bucket888/${file.originalname}`;
+    const uploadLogs = [];
 
-      // อัปโหลดไฟล์จาก Buffer
-      const { data, error } = await supabase
-        .storage
+    for (const file of files) {
+      const filePath = `bucket888/${Date.now()}_${file.originalname}`;
+
+      const { data, error } = await supabase.storage
         .from("bucket888")
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype, // กำหนดประเภทไฟล์ (เช่น image/jpeg)
-        });
+        .upload(filePath, file.buffer, { contentType: file.mimetype });
 
       if (error) {
-        throw new Error(`Error uploading file ${file.originalname}: ${error.message}`);
+        console.error(`Error uploading file ${file.originalname}:`, error);
+        uploadLogs.push({
+          file_name: file.originalname,
+          file_path: null,
+          uploaded_at: new Date().toISOString(),
+          status: "failed",
+          error_message: error.message,
+          patient_id: patient_id || null,
+        });
+        continue;
       }
 
-      console.log(`File ${file.originalname} uploaded successfully:`, data);
+      console.log(`File uploaded successfully:`, data);
+
+      // ✅ บันทึก `patient_id` ลง `upload_logs` // step2
+      const { error: dbError } = await supabase
+        .from("upload_logs")
+        .insert([
+          {
+            file_name: file.originalname,
+            file_path: filePath,
+            uploaded_at: new Date().toISOString(),
+            status: "success",
+            error_message: null,
+            patient_id: patient_id ? parseInt(patient_id) : null, // **แปลงให้เป็น int**
+          },
+        ]);
+
+      if (dbError) {
+        console.error(`Error logging upload for ${file.originalname}:`, dbError);
+      }
+
+      uploadLogs.push({
+        file_name: file.originalname,
+        file_path: filePath,
+        uploaded_at: new Date().toISOString(),
+        status: dbError ? "failed" : "success",
+        error_message: dbError ? dbError.message : null,
+        patient_id: patient_id || null,
+      });
     }
 
-    res.status(200).json({ success: true, message: "Files uploaded successfully!" });
+    res.status(200).json({ success: true, message: "Files uploaded successfully!", logs: uploadLogs });
+
   } catch (error) {
     console.error("Error uploading files:", error);
     res.status(500).json({ success: false, message: "Error uploading files" });

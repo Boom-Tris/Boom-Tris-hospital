@@ -86,7 +86,7 @@ const Upload = () => {
 
         // Upload files after setting appointment
         if (files.length > 0) {
-          await handleUploadFiles(files); // pass files array directly
+          await handleUploadFiles(patientId, files); // pass patientId and files array directly
         }
 
         handleSearchPatient(); // Refresh patient data
@@ -111,7 +111,7 @@ const Upload = () => {
     setFiles(Array.from(event.target.files)); // Ensure it's an array
   };
 
-  const handleUploadFiles = async (files) => {
+  const handleUploadFiles = async (patientId, files) => {
     if (!files || files.length === 0) {
       console.log('No files to upload');
       return; // ไม่มีไฟล์ที่จะอัปโหลด
@@ -122,6 +122,7 @@ const Upload = () => {
   
       // สร้าง FormData object เพื่อส่งไฟล์ไปยัง API
       const formData = new FormData();
+      formData.append("patient_id", patientId);
       files.forEach((file) => {
         formData.append("files", file); // ใช้ key เป็น "files" เพื่อส่งไฟล์
       });
