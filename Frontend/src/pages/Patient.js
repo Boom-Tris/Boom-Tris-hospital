@@ -26,6 +26,7 @@ const decryptData = (data) => {
   return decrypted;
 };
 const Patient = () => {
+  const [selectedIds, setSelectedIds] = useState([]); 
   const [rows, setRows] = useState([]);
   const [error, setError] = useState('');
   const [search, setSearch] = useState("");
@@ -80,24 +81,35 @@ const Patient = () => {
   }, []);
 
   const confirmDeletePatient = async () => {
+    if (!patientToDelete || !Array.isArray(patientToDelete) || patientToDelete.length === 0) {
+      console.error("❌ ไม่มีผู้ป่วยที่ต้องลบ");
+      return;
+    }
+  
+    // ✅ ตรวจสอบว่ากำลังส่งค่าอะไรไปยัง API
+    const patientIds = patientToDelete.map(p => p.patient_id);
+    console.log("🟢 กำลังส่งค่าไปลบ:", patientIds);
+  
     try {
-      const response = await fetch(`http://localhost:3001/delete-patient/${patientToDelete}`, {
+      const response = await fetch(`http://localhost:3001/delete-patients`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientIds }),
       });
-
+  
       if (response.ok) {
-        setRows((prevRows) => prevRows.filter((row) => row.patient_id !== patientToDelete));
-        setOpenConfirmDeleteDialog(false);
+        setRows(prevRows => prevRows.filter(row => !patientIds.includes(row.patient_id))); // ✅ ลบจาก UI
+        setSelectedIds([]); // ✅ ล้าง state
+        setOpenConfirmDeleteDialog(false); // ✅ ปิด popup
       } else {
-        const data = await response.json();
-        console.error('Error deleting patient:', data.message);
+        const errorMessage = await response.json();
+        console.error("🔴 Error deleting patients:", errorMessage);
       }
     } catch (error) {
-      console.error('Server error:', error);
+      console.error("❌ Server error:", error);
     }
   };
   
-
   // ✅ ค้นหาข้อมูลใน DataGrid
   const filteredRows = useMemo(() => {
     return rows
@@ -111,8 +123,18 @@ const Patient = () => {
   
   // ✅ ฟังก์ชันลบข้อมูลออกจาก Supabase
   const handleDeleteRow = (patientId) => {
-    setPatientToDelete(patientId);  // Set the patient to delete
-    setOpenConfirmDeleteDialog(true);  // Open the confirmation dialog
+    let idsToDelete = [...selectedIds];
+  
+    if (!idsToDelete.includes(patientId)) {
+      idsToDelete.push(patientId); // ✅ ถ้าไม่ได้ถูกเลือก ให้เพิ่มเข้าไป
+    }
+  
+    const selectedPatients = rows.filter(row => idsToDelete.includes(row.patient_id));
+  
+    console.log("🟢 ผู้ป่วยที่ถูกเลือก:", selectedPatients);
+    
+    setPatientToDelete(selectedPatients);
+    setOpenConfirmDeleteDialog(true);
   };
   
   const validateForm = () => {
@@ -290,23 +312,34 @@ const Patient = () => {
 
       {/* Dialog สำหรับยืนยันการลบ */}
       <Dialog
-        open={openConfirmDeleteDialog}
-        onClose={handleCancelDelete}
-        aria-labelledby="confirm-delete-dialog-title"
-      >
-        <DialogTitle id="confirm-delete-dialog-title">ยืนยันการลบ</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1">คุณแน่ใจว่าจะลบข้อมูลผู้ป่วยนี้หรือไม่?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelDelete} color="primary">
-            ยกเลิก
-          </Button>
-          <Button onClick={confirmDeletePatient} color="error">
-            ลบ
-          </Button>
-        </DialogActions>
-      </Dialog>
+  open={openConfirmDeleteDialog}
+  onClose={() => setOpenConfirmDeleteDialog(false)}
+  aria-labelledby="confirm-delete-dialog-title"
+>
+  <DialogTitle id="confirm-delete-dialog-title">ยืนยันการลบ</DialogTitle>
+  <DialogContent>
+    <Typography variant="body1">
+      คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลผู้ป่วยเหล่านี้?
+    </Typography>
+
+    {/* ✅ แสดงชื่อผู้ป่วยที่เลือก */}
+    <ul>
+      {patientToDelete && patientToDelete.map((patient) => (
+        <li key={patient.patient_id}>{patient.name}</li>
+      ))}
+    </ul>
+  </DialogContent>
+
+  <DialogActions>
+    <Button onClick={() => setOpenConfirmDeleteDialog(false)} color="primary">
+      ยกเลิก
+    </Button>
+    <Button onClick={confirmDeletePatient} color="error">  {/* ✅ เรียกฟังก์ชันลบ */}
+      ลบ
+    </Button>
+  </DialogActions>
+</Dialog>
+
         </>
       ),
     },
@@ -485,15 +518,18 @@ const Patient = () => {
 
       {/* ตารางข้อมูล */}
       <DataGrid 
-       key={rows.length}
-        rows={filteredRows} 
-        columns={columns} 
-        pageSize={5} 
-        rowsPerPageOptions={[5, 10, 15]} 
-        checkboxSelection 
-        getRowId={(row) => row.patient_id} // ✅ ใช้ patient_id เป็น ID
-         className="dataGridStyle"
-      />
+  key={rows.length}
+  rows={filteredRows} 
+  columns={columns} 
+  pageSize={5} 
+  rowsPerPageOptions={[5, 10, 15]} 
+  checkboxSelection // ✅ ทำให้เลือกหลายแถวได้
+  getRowId={(row) => row.patient_id} // ✅ ใช้ patient_id เป็น ID
+  onRowSelectionModelChange={(newSelection) => setSelectedIds(newSelection)} // ✅ เก็บค่า ID ที่ถูกเลือก
+  selectionModel={selectedIds} // ✅ เชื่อมค่า ID ที่เลือกกลับเข้า DataGrid
+  className="dataGridStyle"
+/>
+
 
 <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
   <DialogTitle>Edit Patient</DialogTitle>
@@ -520,14 +556,8 @@ const Patient = () => {
         slotProps={{ inputLabel: { shrink: true } }}
         fullWidth 
       />
-      <TextField 
-        label="LINE ID" 
-        value={selectedPatient?.lineid || ''} 
-        onChange={(e) => setSelectedPatient({ ...selectedPatient, lineid: e.target.value })} 
-        variant="outlined"
-        slotProps={{ inputLabel: { shrink: true } }}
-        fullWidth 
-      />
+ 
+
       <TextField 
         label="อาการแพ้" 
         value={selectedPatient?.allergic || ''} 

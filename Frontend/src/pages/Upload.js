@@ -122,7 +122,7 @@ const Upload = () => {
   
       // สร้าง FormData object เพื่อส่งไฟล์ไปยัง API
       const formData = new FormData();
-      formData.append("patient_id", patientId);
+      formData.append("patient_id", patientId); // ✅ เพิ่ม patient_id ไปด้วย
       files.forEach((file) => {
         formData.append("files", file); // ใช้ key เป็น "files" เพื่อส่งไฟล์
       });
