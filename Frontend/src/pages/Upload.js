@@ -15,7 +15,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { format } from "date-fns";
+import { format, addDays, addWeeks, addMonths, parse } from "date-fns";
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
 import { Snackbar, Alert } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -27,6 +27,11 @@ const Upload = () => {
   const [loading, setLoading] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState(null);
   const [reminderTime, setReminderTime] = useState(null);
+  const [appointmentDetails, setAppointmentDetails] = useState("");
+  const [notificationDate, setNotificationDate] = useState(null);
+  const [notificationTime, setNotificationTime] = useState(null);
+  const [notificationDetails, setNotificationDetails] = useState("");
+  const [notificationDuration, setNotificationDuration] = useState("");
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -34,6 +39,28 @@ const Upload = () => {
     message: "",
     severity: "success",
   });
+
+  // Handle the input for notification duration (e.g., "6 days", "6 weeks", "6 months")
+  const handleNotificationDurationChange = (e) => {
+    const duration = e.target.value;
+    setNotificationDuration(duration);
+    // Check if the input is a valid duration like "6 days", "6 weeks", or "6 months"
+    const durationParts = duration.match(/^(\d+)\s*(days?|weeks?|months?)$/);
+    if (durationParts) {
+      const value = parseInt(durationParts[1], 10);
+      const unit = durationParts[2];
+      let newNotificationDate = new Date(); // Start from the current date
+      // Calculate the notification date based on the unit
+      if (unit.includes("day")) {
+        newNotificationDate = addDays(newNotificationDate, value);
+      } else if (unit.includes("week")) {
+        newNotificationDate = addWeeks(newNotificationDate, value);
+      } else if (unit.includes("month")) {
+        newNotificationDate = addMonths(newNotificationDate, value);
+      }
+      setNotificationDate(newNotificationDate); // Set the calculated notification date
+    }
+  };
 
   const handleSearchPatient = async () => {
     setLoading(true);
@@ -59,15 +86,21 @@ const Upload = () => {
       });
       return;
     }
-
     const data = {
       patient_id: patientId,
       appointment_date: appointmentDate
         ? format(appointmentDate, "yyyy-MM-dd")
         : null,
       reminder_time: reminderTime ? format(reminderTime, "HH:mm") : null,
+      appointment_details: appointmentDetails || null,
+      notification_date: notificationDate
+        ? format(notificationDate, "yyyy-MM-dd")
+        : null,
+      notification_time: notificationTime
+        ? format(notificationTime, "HH:mm")
+        : null,
+      notification_details: notificationDetails || null,
     };
-
     try {
       const response = await fetch("http://localhost:3001/set-appointment", {
         method: "POST",
@@ -77,19 +110,16 @@ const Upload = () => {
         body: JSON.stringify(data),
       });
       const result = await response.json();
-
       if (result.success) {
         setSnackbar({
           open: true,
           message: "Appointment set successfully!",
           severity: "success",
         });
-
         // Upload files after setting appointment
         if (files.length > 0) {
           await handleUploadFiles(files); // pass files array directly
         }
-
         handleSearchPatient(); // Refresh patient data
       } else {
         setSnackbar({
@@ -116,41 +146,41 @@ const Upload = () => {
       console.log("No files to upload");
       return;
     }
-  
+
     // ตรวจสอบค่าที่จะส่ง
     if (!patientId) {
       console.log("Missing required field: patientId");
       return;
     }
-  
+
     try {
       setUploading(true);
-  
+
       // สร้าง FormData
       const formData = new FormData();
       files.forEach((file) => {
         formData.append("files", file); // เพิ่มไฟล์
       });
       formData.append("patient_id", patientId); // เพิ่ม patient_id
-  
+
       // ตรวจสอบว่า FormData มีข้อมูลครบถ้วน
       for (let pair of formData.entries()) {
         console.log(pair[0] + ": " + pair[1]); // ตรวจสอบข้อมูลที่ส่งไป
       }
-  
+
       // ส่งคำขอไปที่เซิร์ฟเวอร์
       const response = await fetch("http://localhost:3001/upload-file", {
         method: "POST",
         body: formData,
       });
-  
+
       if (!response.ok) {
         throw new Error("File upload failed");
       }
-  
+
       const result = await response.json();
       console.log("Upload result:", result);
-  
+
       setSnackbar({
         open: true,
         message: "Files uploaded and log recorded successfully!",
@@ -167,7 +197,7 @@ const Upload = () => {
       setUploading(false);
     }
   };
-  
+
   const handleDeleteFile = async (fileId) => {
     try {
       const response = await fetch(`http://localhost:3001/delete/${fileId}`, {
@@ -306,7 +336,26 @@ const Upload = () => {
                             Reminder Time:{" "}
                             {patient.reminder_time || "Not available"}
                           </Typography>
+                          <Typography variant="body2">
+                            Appointment Details:{" "}
+                            {patient.appointment_details || "Not available"}
+                          </Typography>
+                          <Typography variant="body2">
+                            Notification Date:{" "}
+                            {patient.notification_date || "Not available"}
+                          </Typography>
+                          <Typography variant="body2">
+                            Notification Time:{" "}
+                            {patient.notification_time || "Not available"}
+                          </Typography>
+                          <Typography variant="body2">
+                            Notification Details:{" "}
+                            {patient.notification_details || "Not available"}
+                          </Typography>
 
+                          <Typography variant="h6" sx={{ marginTop: 2, marginBottom: 2 }}>
+                            Appointment
+                          </Typography>
                           <DatePicker
                             value={appointmentDate}
                             onChange={(newDate) => setAppointmentDate(newDate)}
@@ -319,7 +368,16 @@ const Upload = () => {
                             }}
                             renderInput={(params) => <TextField {...params} />}
                           />
-
+                          <TextField
+                            label="Appointment Details"
+                            variant="outlined"
+                            value={appointmentDetails}
+                            onChange={(e) =>
+                              setAppointmentDetails(e.target.value)
+                            }
+                            margin="normal"
+                            fullWidth
+                          />
                           <TimePicker
                             value={reminderTime}
                             onChange={(newTime) => setReminderTime(newTime)}
@@ -332,7 +390,42 @@ const Upload = () => {
                             }}
                             renderInput={(params) => <TextField {...params} />}
                           />
-
+                          <Typography variant="h6" sx={{ marginTop: 2 }}>
+                            Notification Duration
+                          </Typography>
+                          <TextField
+                            label="Notification Duration ( 1 day, 2 weeks, 3 months)"
+                            fullWidth
+                            variant="outlined"
+                            value={notificationDuration}
+                            onChange={handleNotificationDurationChange}
+                            margin="normal"
+                          />
+                          <TextField
+                            label="Notification Details"
+                            variant="outlined"
+                            value={notificationDetails}
+                            onChange={(e) =>
+                              setNotificationDetails(e.target.value)
+                            }
+                            margin="normal"
+                            fullWidth
+                          />
+                          <TimePicker
+                            value={notificationTime}
+                            onChange={(newTime) => setNotificationTime(newTime)}
+                            label="Notification Time"
+                            slots={{ openPickerIcon: FlightTakeoffIcon }}
+                            slotProps={{
+                              openPickerIcon: {
+                                color: "primary",
+                              },
+                            }}
+                            renderInput={(params) => <TextField {...params} />}
+                          />
+                          <Typography variant="h6" sx={{ marginTop: 2 }}>
+                            Uploaded Files
+                          </Typography>
                           <input
                             type="file"
                             multiple
@@ -355,10 +448,6 @@ const Upload = () => {
                               "Set Appointment and Reminder Time"
                             )}
                           </Button>
-
-                          <Typography variant="h6" sx={{ marginTop: 2 }}>
-                            Uploaded Files
-                          </Typography>
                           <List>{renderPatientFiles(patient)}</List>
                         </>
                       }
