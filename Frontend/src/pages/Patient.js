@@ -7,8 +7,6 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import '../components/Table.css';
 import CryptoJS from "crypto-js";
-import validator from 'validator';
-
 const formatDate = (dateString) => {
   if (!dateString) return "ไม่ได้นัดหมาย"; 
   const date = new Date(dateString);
@@ -35,206 +33,39 @@ const Patient = () => {
 
   const [openConfirmGroupDelete, setOpenConfirmGroupDelete] = useState(false);
   const [openConfirmDeleteInEdit, setOpenConfirmDeleteInEdit] = useState(false);
-  const [patientsToDelete, setPatientsToDelete] = useState([]);
-  const [rows, setRows] = useState([]); 
-
+  const [patientsToDelete] = useState([]);
   const handleRowSelection = (newSelection) => {
     setSelectedIds(newSelection);
   };
   
-
-  const handleReset = () => {
-    setSelectedAgeType('');
-    setAgeInput('');
-    setSelectedStatus('');
-    setSelectedDiseases('');
-    setSelectedProvinces('');
-  };
-  
-
-  const [selectedAgeType, setSelectedAgeType] = useState(''); // มากกว่า/น้อยกว่า
-  const [ageInput, setAgeInput] = useState(''); // ค่าอายุที่กรอก
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [anchorElFilter, setAnchorElFilter] = useState(null);
-  const [filteredRows, setFilteredRows] = useState([]);
-  const [anchorEl, setAnchorEl] = useState(null); 
-  const open = Boolean(anchorEl);
-  const handleClick = (event) => {
-  setAnchorEl(event.currentTarget);
-};
-
-
-const [anchorElManagement, setAnchorElManagement] = useState(null);
-const openManagementMenu = Boolean(anchorElManagement);
-
-const handleManagementOpen = (event) => {
-  setAnchorElManagement(event.currentTarget);
-};
-
-const handleManagementClose = () => {
-  setAnchorElManagement(null);
-};
-
-const handleOpenConfirmDeleteInEdit = () => {
-  setOpenConfirmDeleteInEdit(true);
-};
-
-const handleSearch = (event) => {
-  const value = event.target.value.toLowerCase(); 
-  setSearch(value);
-
-  if (value.trim() === "") {
-    setFilteredRows(rows); 
-    return;
-  }
-
-  const filtered = rows.filter((row) =>
-    Object.values(row).some(
-      (field) =>
-        field &&
-        field.toString().toLowerCase().includes(value)
-    )
-  );
-
-  setFilteredRows(filtered);
-};
-
-
-
-const handleOpenConfirmGroupDelete = () => {
-  if (selectedIds.length === 0) {
-    alert("❌ กรุณาเลือกผู้ป่วยก่อนทำการลบ!");
-    return;
-  }
-
-  const selectedPatients = rows.filter((row) => selectedIds.includes(row.patient_id));
-
-  setPatientsToDelete(selectedPatients); // อัปเดตรายชื่อผู้ป่วยที่จะแสดง
-  setOpenConfirmGroupDelete(true); // เปิด Dialog
-};
-const handleDeletePatientInEdit = async () => {
-  if (!selectedPatient) {
-    console.error("❌ ไม่พบข้อมูลผู้ป่วยที่ต้องการลบ");
-    return;
-  }
-
-  console.log("🟢 ผู้ป่วยที่กำลังลบ:", selectedPatient);
-
-  try {
-    const response = await fetch(`http://localhost:3001/delete-patient/${selectedPatient.patient_id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Error deleting patient: ${response.status} - ${errorText}`);
-    }
-
-    console.log(`✅ ลบสำเร็จ: ${selectedPatient.name}`);
-
-    // ✅ อัปเดต UI หลังลบ
-    setRows((prevRows) => prevRows.filter((row) => row.patient_id !== selectedPatient.patient_id));
-    setOpenEditDialog(false);
-    setOpenConfirmDeleteInEdit(false);
-  } catch (error) {
-    console.error("❌ Fetch Error:", error.message);
-  }
-};
-
-
-const handleConfirmGroupDelete = async () => {
-  if (selectedIds.length === 0) return;
-
-  try {
-    const response = await fetch(`http://localhost:3001/delete-patients`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientIds: selectedIds }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Error deleting patients: ${response.status} - ${errorText}`);
-    }
-
-    console.log("✅ ลบผู้ป่วยสำเร็จ:", selectedIds);
-
-    setRows((prevRows) => prevRows.filter((row) => !selectedIds.includes(row.patient_id)));
-    setSelectedIds([]); 
-    setOpenConfirmGroupDelete(false); 
-  } catch (error) {
-    console.error("❌ Fetch Error:", error.message);
-  }
-};
-
-
-
-
-const handleDeleteSelectedPatients = async () => {
-  if (selectedIds.length === 0) {
-    alert("❌ กรุณาเลือกผู้ป่วยก่อนทำการลบ!");
-    return;
-  }
-
-  console.log("📌 กำลังลบผู้ป่วยที่เลือก:", selectedIds);
-
-  try {
-    const response = await fetch(`http://localhost:3001/delete-patients`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientIds: selectedIds }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Error deleting patients: ${response.status} - ${errorText}`);
-    }
-
-    console.log("✅ ลบสำเร็จ");
-
-    // ✅ อัปเดต UI หลังลบ
-    setRows((prevRows) => prevRows.filter((row) => !selectedIds.includes(row.patient_id)));
-    setSelectedIds([]);
-    setAnchorElManagement(null);
-  } catch (error) {
-    console.error("❌ Fetch Error:", error.message);
-  }
-};
   const [selectedIds, setSelectedIds] = useState([]); 
+
+
+
+
+
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState("");
-  const handleFilterClose = () => {
-    setAnchorElFilter(null);
-  };
+
+
+
   
-  const handleFilterConfirm = () => {
-    console.log("✅ ใช้ค่ากรอง...");
-  
-    let filtered = rows; 
-      if (selectedAgeType && ageInput) {
-      filtered = filtered.filter(row =>
-        selectedAgeType === "more" ? row.age > parseInt(ageInput) : row.age < parseInt(ageInput)
-      );
-    }
-      if (selectedStatus) {
-      filtered = filtered.filter(row => row.status === selectedStatus);
-    }
-  
-    if (selectedDiseases) {
-      const diseasesArray = selectedDiseases.split(",").map(d => d.trim());
-      filtered = filtered.filter(row =>
-        diseasesArray.some(disease => row.sickness.includes(disease))
-      );
-    }
-      if (selectedProvinces) {
-      const provincesArray = selectedProvinces.split(",").map(p => p.trim());
-      filtered = filtered.filter(row =>
-        provincesArray.some(province => row.address.includes(province))
-      );
-    }
-  
-    setFilteredRows(filtered);
-    setAnchorEl(null); 
-  };
+  const [showTrashIcon, setShowTrashIcon] = useState(false);
+  const [isMultiDelete, setIsMultiDelete] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [newPatient, setNewPatient] = useState({
+    firstName: '',
+    lastName: '',
+    age: '',
+    lineId: '',
+    allergic: '',
+    sickness: '',
+    address: '',
+    email: '',
+    tel: '',
+    appointment_date: null, // ✅ Ensure appointment_date is set as null initially
+  });
   
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedDiseases, setSelectedDiseases] = useState('');
