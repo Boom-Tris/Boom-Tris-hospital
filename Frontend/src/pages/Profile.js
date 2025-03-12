@@ -3,6 +3,7 @@ import { Grid, Box, Typography, TextField, Button, Avatar } from '@mui/material'
 import '../components/pages.css';
 
 const Profile = () => {
+  
   const [profile, setProfile] = useState({
     fullName: '',
     nickname: '',
