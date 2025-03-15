@@ -76,6 +76,27 @@ const handleOpenConfirmDeleteInEdit = () => {
   setOpenConfirmDeleteInEdit(true);
 };
 
+const handleSearch = (event) => {
+  const value = event.target.value.toLowerCase(); 
+  setSearch(value);
+
+  if (value.trim() === "") {
+    setFilteredRows(rows); 
+    return;
+  }
+
+  const filtered = rows.filter((row) =>
+    Object.values(row).some(
+      (field) =>
+        field &&
+        field.toString().toLowerCase().includes(value)
+    )
+  );
+
+  setFilteredRows(filtered);
+};
+
+
 
 const handleOpenConfirmGroupDelete = () => {
   if (selectedIds.length === 0) {
@@ -293,6 +314,11 @@ const formatDateToYYYYMMDD = (date) => {
     setFilteredRows(rows);
   }, [rows]);
 
+  useEffect(() => {
+    setFilteredRows(rows); 
+  }, [rows]);
+  
+
 
   const convertToYYYYMMDD = (dateString) => {
   if (!dateString) return null;
@@ -366,10 +392,11 @@ const formatDateToYYYYMMDD = (date) => {
       allergic: selectedPatient.allergic,
       sickness: selectedPatient.sickness,
       address: selectedPatient.address,
-      appointment_date: selectedPatient.appointment_date ? formatDateToYYYYMMDD(new Date(selectedPatient.appointment_date)) : null, // แปลงเป็น YYYY-MM-DD
+      appointment_date: selectedPatient.appointment_date || null, // ✅ ใช้ค่าเดิมที่แปลงจาก DatePicker
     };
-  
+    
     console.log("📦 Payload ที่ส่งไป:", payload);
+    console.log("📆 appointment_date ที่ส่ง:", payload.appointment_date);
   
     try {
       const response = await fetch("http://localhost:3001/update-patient", {
@@ -399,6 +426,7 @@ const formatDateToYYYYMMDD = (date) => {
       alert("เกิดข้อผิดพลาดในการอัปเดตข้อมูลผู้ป่วย");
     }
   };
+  
   const columns = [
     { field: 'patient_id', headerName: 'ID', width: 30 },
     {
@@ -502,7 +530,7 @@ const formatDateToYYYYMMDD = (date) => {
     variant="outlined" 
     size="small" 
     value={search} 
-    onChange={(e) => setSearch(e.target.value)} 
+    onChange={handleSearch}
     className="searchTextField"
   />
 <Button
@@ -789,27 +817,38 @@ const formatDateToYYYYMMDD = (date) => {
 
       <LocalizationProvider dateAdapter={AdapterDateFns}>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <DatePicker
-  label="เลือกวันนัดหมาย"
-  value={selectedPatient?.appointment_date ? new Date(selectedPatient.appointment_date) : null}
-  onChange={(date) => {
-    if (date) {
-      const formattedDate = formatDateToYYYYMMDD(date); // แปลงเป็น yyyy-mm-dd
-      console.log("📅 วันนัดหมายที่เลือก:", formattedDate); // Debug
-      setSelectedPatient({ ...selectedPatient, appointment_date: formattedDate });
-    } else {
-      setSelectedPatient({ ...selectedPatient, appointment_date: null });
-    }
-  }}
-  renderInput={(params) => (
-    <TextField 
-      {...params} 
-      fullWidth 
-      variant="outlined" 
-    />
-  )}
-/>
+  <DatePicker
+    label="เลือกวันนัดหมาย"
+    value={selectedPatient?.appointment_date ? new Date(selectedPatient.appointment_date) : null}
+    onChange={(date) => {
+      if (date) {
+        const formattedDate = date.toISOString().split('T')[0]; // แปลงเป็น "YYYY-MM-DD"
+        console.log("📅 วันนัดหมายที่เลือก:", formattedDate); // Debug
+        setSelectedPatient((prev) => {
+          const updated = {
+            ...prev,
+            appointment_date: formattedDate
+          };
+          console.log("🔄 ข้อมูลผู้ป่วยหลังอัพเดท:", updated); // Debug
+          return updated;
+        });
+      } else {
+        setSelectedPatient((prev) => ({
+          ...prev,
+          appointment_date: null,
+        }));
+      }
+    }}
+    // แทนที่ renderInput ด้วยการกำหนด slotProps สำหรับ MUI v6+
+    slotProps={{ 
+      textField: { 
+        fullWidth: true,
+        variant: "outlined" 
+      } 
+    }}
+  />
 </LocalizationProvider>
+
 </LocalizationProvider>
 
     </Box>
