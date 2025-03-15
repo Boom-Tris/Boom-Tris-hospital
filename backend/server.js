@@ -488,6 +488,42 @@ app.get("/all-patients", async (req, res) => {
   }
 });
 
+app.get("/all-patients-count", async (req, res) => {
+  try {
+    // นับจำนวนผู้ป่วยทั้งหมด
+    const { count: totalPatients, error: patientError } = await supabase
+      .from("patient")
+      .select("*", { count: "exact", head: true });
+     
+      const { count: totalDoctors, error: doctorError } = await supabase
+      .from("medicalpersonnel")
+      .select("medicalpersonnel_id", { count: "exact", head: true });
+
+      const { count: totalAppointments, error: appointmentError } = await supabase
+      .from("patient")
+      .select("appointment_date", { count: "exact", head: true })
+      .not("appointment_date", "is", null);  // กรองแถวที่ appointment_date ไม่เป็น NULL
+
+    // ตรวจสอบข้อผิดพลาด
+    if (patientError) {
+      return res.status(500).send(patientError.message); // ใช้ patientError แทน error
+    }
+    if (doctorError) {
+      return res.status(500).send(doctorError.message);
+    }
+    if (appointmentError) {
+      return res.status(500).send(appointmentError.message); // ใช้ appointmentError แทน error
+    }
+   
+    res.status(200).json({ totalPatients: totalPatients,
+      totalDoctors: totalDoctors,  totalAppointments: totalAppointments,
+     });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
 // API สำหรับอัปเดตข้อมูลผู้ป่วย
 app.put("/update-patient", async (req, res) => {
   try {
