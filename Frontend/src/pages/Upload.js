@@ -50,6 +50,7 @@ const Upload = () => {
     message: "",
     severity: "success",
   });
+  const [patientFiles, setPatientFiles] = useState([]);
 
   useEffect(() => {
     let details = [];
@@ -119,6 +120,18 @@ const Upload = () => {
     }
   };
 
+  const fetchPatientFiles = async (patientId) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/files/${patientId}`
+      );
+      const data = await response.json();
+      setPatientFiles(data);
+    } catch (error) {
+      console.error("Error fetching patient files:", error);
+    }
+  };
+
   const handleSearchPatient = async () => {
     setLoading(true);
     try {
@@ -127,6 +140,11 @@ const Upload = () => {
       );
       const data = await response.json();
       setPatients(data);
+
+      // ดึงข้อมูลไฟล์ของผู้ป่วย
+      if (data.length > 0) {
+        fetchPatientFiles(data[0].patient_id);
+      }
     } catch (error) {
       console.error("Error fetching patient data:", error);
     } finally {
@@ -258,35 +276,35 @@ const Upload = () => {
 
   const handleDeleteFile = async (fileId) => {
     try {
-      const response = await fetch(`http://localhost:3001/delete/${fileId}`, {
-        method: "DELETE",
-      });
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Invalid response from server");
-      }
+      const response = await fetch(
+        `http://localhost:3001/api/files/${fileId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       const result = await response.json();
 
-      if (result.success) {
+      if (result.message === "File deleted successfully") {
         setSnackbar({
           open: true,
-          message: result.message || "File deleted successfully!",
+          message: "File deleted successfully!",
           severity: "success",
         });
-        handleSearchPatient(); // Refresh patient data
+
+        // รีเฟรชรายการไฟล์หลังจากลบ
+        fetchPatientFiles(patients[0].patient_id);
       } else {
         setSnackbar({
           open: true,
-          message: result.message || "Failed to delete file.",
+          message: "Failed to delete file.",
           severity: "error",
         });
       }
     } catch (error) {
       setSnackbar({
         open: true,
-        message: error.message || "Error deleting file.",
+        message: "Error deleting file.",
         severity: "error",
       });
       console.error("Error:", error);
@@ -304,16 +322,16 @@ const Upload = () => {
     ));
   };
 
-  const renderPatientFiles = (patient) => {
-    return patient.files?.map((file) => (
-      <ListItem key={file.file_id}>
+  const renderPatientFiles = () => {
+    return patientFiles.map((file) => (
+      <ListItem key={file.id}>
         <ListItemText
           primary={file.file_name}
           secondary={`Uploaded on: ${new Date(
-            file.upload_date
+            file.uploaded_at
           ).toLocaleString()}`}
         />
-        <IconButton onClick={() => handleDeleteFile(file.file_id)}>
+        <IconButton onClick={() => handleDeleteFile(file.id)}>
           <DeleteIcon />
         </IconButton>
       </ListItem>
@@ -614,6 +632,11 @@ const Upload = () => {
                             style={{ marginTop: 10 }}
                           />
                           <List>{renderFilePreviews()}</List>
+
+                          <Box sx={{ marginTop: 2 }}>
+                            <Typography variant="h6">Files</Typography>
+                            <List>{renderPatientFiles()}</List>
+                          </Box>
 
                           <Button
                             variant="contained"

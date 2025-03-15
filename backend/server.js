@@ -420,6 +420,77 @@ app.post("/upload-file", upload.array("files"), async (req, res) => {
   }
 });
 
+// API เพื่อดึงข้อมูลไฟล์จากตาราง upload_logs โดยใช้ patient_id
+app.get("/api/files/:patientId", async (req, res) => {
+  const patientId = req.params.patientId;
+
+  const { data, error } = await supabase
+    .from("upload_logs")
+    .select("*")
+    .eq("patient_id", patientId);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json(data);
+});
+
+app.delete("/api/files/:fileId", async (req, res) => {
+  const fileId = req.params.fileId;
+
+  try {
+    // ดึง file_path จาก upload_logs
+    const { data: fileData, error: fileError } = await supabase
+      .from("upload_logs")
+      .select("file_path")
+      .eq("id", fileId)
+      .single();
+
+    if (fileError || !fileData) {
+      console.error("Error fetching file data:", fileError);
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    console.log("🔥 Final file path to delete:", fileData.file_path);
+
+    // ลบไฟล์จาก Supabase Storage
+    const { error: storageError } = await supabase.storage
+      .from("bucket888")
+      .remove([fileData.file_path]);
+
+    if (storageError) {
+      console.error("Error deleting file from storage:", storageError);
+      return res.status(500).json({
+        error: "Failed to delete file from storage",
+        details: storageError.message,
+      });
+    }
+
+    // ลบ record ออกจาก upload_logs
+    const { error: dbError } = await supabase
+      .from("upload_logs")
+      .delete()
+      .eq("id", fileId);
+
+    if (dbError) {
+      console.error("Error deleting file record from upload_logs:", dbError);
+      return res.status(500).json({
+        error: "Failed to delete file record from upload_logs",
+        details: dbError.message,
+      });
+    }
+
+    res.json({ message: "File deleted successfully" });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    res.status(500).json({
+      error: "An unexpected error occurred",
+      details: error.message || "No additional error details available",
+    });
+  }
+});
+
 // API สำหรับค้นหาผู้ป่วย
 app.get("/search-patient", async (req, res) => {
   const { name } = req.query;
@@ -561,7 +632,7 @@ async function sendLineAppointment(
       }
     );
 
-    console.log(`✅ ส่งแจ้งเตือนสำเร็จถึง ${userId} พร้อมไฟล์แนบ`);
+    console.log(`✅ ส่งแจ้งเตือนสำเร็จถึง ${userId}`);
   } catch (error) {
     console.error(
       `❌ ส่งแจ้งเตือนล้มเหลวถึง ${userId}:`,
@@ -585,10 +656,9 @@ async function getPatientAppointment() {
   return data;
 }
 
-// ส่งการแจ้งเตือนนัดหมายให้ผู้ป่วย
-async function sendNotificationsAppointment() {
+// ส่งการแจ้งเตือนวันที่กำหนดให้ผู้ป่วย
+async function sendNotificationsSendDate() {
   const today = dayjs().format("YYYY-MM-DD");
-  const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
 
   const patients = await getPatientAppointment();
 
@@ -596,14 +666,13 @@ async function sendNotificationsAppointment() {
     (patient) =>
       patient.lineid &&
       patient.reminder_time &&
+      patient.appointment_senddate &&
       patient.appointment_date &&
       patient.appointment_details &&
-      (patient.appointment_senddate === today ||
-        patient.appointment_date === today ||
-        patient.appointment_date === tomorrow)
+      patient.appointment_senddate === today
   );
 
-  console.log("📌 ผู้ป่วยที่ต้องแจ้งเตือน:", patientsToNotify);
+  console.log("📌 ผู้ป่วยที่ต้องแจ้งเตือนวันนี้:", patientsToNotify);
 
   for (const patient of patientsToNotify) {
     const {
@@ -617,9 +686,7 @@ async function sendNotificationsAppointment() {
 
     const [hours, minutes, seconds] = reminder_time.split(":");
     const reminderDateTime = dayjs(
-      `${
-        appointment_senddate || appointment_date
-      } ${hours}:${minutes}:${seconds}`
+      `${appointment_senddate} ${hours}:${minutes}:${seconds}`
     );
     const delay = reminderDateTime.diff(dayjs());
 
@@ -680,11 +747,137 @@ async function sendNotificationsAppointment() {
       );
 
       setTimeout(async () => {
-        const message = `แจ้งเตือน: คุณมีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
+        const message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
         await sendLineAppointment(lineid, message, fileUrls, fileTypes);
       }, delay);
     } else {
       console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${patient.name}`);
+    }
+  }
+}
+
+// ส่งการแจ้งเตือนนัดหมายให้ผู้ป่วย
+async function sendNotificationsAppointment() {
+  const today = dayjs().format("YYYY-MM-DD");
+  const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
+
+  const patients = await getPatientAppointment();
+
+  const patientsToNotify = patients.filter(
+    (patient) =>
+      patient.lineid &&
+      patient.reminder_time &&
+      patient.appointment_date &&
+      patient.appointment_details &&
+      (patient.appointment_date === today ||
+        patient.appointment_date === tomorrow)
+  );
+
+  console.log("📌 ผู้ป่วยที่ต้องแจ้งเตือนวันนัด:", patientsToNotify);
+
+  for (const patient of patientsToNotify) {
+    const {
+      patient_id,
+      lineid,
+      reminder_time,
+      appointment_date,
+      appointment_details,
+    } = patient;
+
+    const [hours, minutes, seconds] = reminder_time.split(":");
+    const reminderDateTime = dayjs(
+      `${appointment_date} ${hours}:${minutes}:${seconds}`
+    );
+    const delay = reminderDateTime.diff(dayjs());
+
+    // ดึงไฟล์ทั้งหมดที่เกี่ยวข้องจาก upload_logs
+    const { data: uploadData } = await supabase
+      .from("upload_logs")
+      .select("file_path, file_name")
+      .eq("patient_id", patient_id)
+      .order("uploaded_at", { ascending: false });
+
+    console.log("🖼 ไฟล์ที่พบสำหรับ", patient.name, uploadData);
+
+    let fileUrls = [];
+    let fileTypes = [];
+
+    if (uploadData?.length) {
+      for (const file of uploadData) {
+        let filePath = file.file_path;
+
+        // ตรวจสอบว่า filePath มีรูปแบบถูกต้อง
+        if (!filePath.startsWith("bucket888/")) {
+          filePath = `bucket888/${filePath}`; // เพิ่ม bucket888/ หากไม่มี
+        }
+
+        // ดึง URL ของไฟล์จาก Supabase Storage
+        const { data: publicUrlData } = supabase.storage
+          .from("bucket888")
+          .getPublicUrl(filePath);
+
+        if (publicUrlData) {
+          const fileUrl = publicUrlData.publicUrl; // กำหนด URL ของไฟล์
+          const fileType = filePath.split(".").pop().toLowerCase(); // ดึงชนิดของไฟล์
+
+          // ตรวจสอบว่าไฟล์สามารถเข้าถึงได้
+          try {
+            const response = await fetch(fileUrl, { method: "HEAD" });
+            if (response.ok) {
+              console.log("✅ ไฟล์สามารถเข้าถึงได้:", fileUrl);
+              fileUrls.push(fileUrl);
+              fileTypes.push(fileType);
+            } else {
+              console.log("❌ ไฟล์ไม่สามารถเข้าถึงได้:", fileUrl);
+            }
+          } catch (error) {
+            console.error("❌ เกิดข้อผิดพลาดในการตรวจสอบไฟล์:", error.message);
+          }
+        } else {
+          console.log(`❌ ไม่พบ publicURL สำหรับไฟล์: ${filePath}`);
+        }
+      }
+    } else {
+      console.log(`❌ ไม่พบไฟล์สำหรับ ${patient.name}`);
+    }
+
+    if (delay > 0) {
+      console.log(
+        `⏳ ตั้งเวลาส่งแจ้งเตือนให้ ${patient.name} ในเวลา ${reminder_time}`
+      );
+
+      setTimeout(async () => {
+        const message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
+        await sendLineAppointment(lineid, message, fileUrls, fileTypes);
+      }, delay);
+    } else {
+      console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${patient.name}`);
+    }
+
+    // เพิ่มโค้ดสำหรับการแจ้งเตือน 1 วันก่อนนัดหมาย
+    if (appointment_date === tomorrow) {
+      const reminderOneDayBefore = dayjs(`${appointment_date}`)
+        .subtract(1, "day")
+        .set("hour", hours)
+        .set("minute", minutes)
+        .set("second", seconds);
+
+      const delayBeforeAppointment = reminderOneDayBefore.diff(dayjs());
+
+      if (delayBeforeAppointment > 0) {
+        console.log(
+          `⏳ กำลังตั้งเวลาส่งแจ้งเตือน 1 วันก่อนนัดให้ ${patient.name} ในเวลา ${reminder_time}`
+        );
+
+        setTimeout(async () => {
+          const message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date} วันพรุ่งนี้\nรายละเอียด:\n${appointment_details}`;
+          await sendLineAppointment(lineid, message, fileUrls, fileTypes);
+        }, delayBeforeAppointment);
+      } else {
+        console.log(
+          `❌ เวลาที่ตั้งไว้สำหรับแจ้งเตือน 1 วันก่อนนัดผ่านไปแล้วสำหรับ ${patient.name}`
+        );
+      }
     }
   }
 }
@@ -749,22 +942,22 @@ async function sendScheduledNotifications() {
 
     // ตั้งเวลาแจ้งเตือนทุกวัน
     setInterval(async () => {
-      const message = `แจ้งเตือนตามระยะเวลา\nรายละเอียด:\n${notification_details}`;
+      const message = `แจ้งเตือนตามระยะเวลาถึงคุณ ${patient.name}\nรายละเอียด:\n${notification_details}`;
       await sendLineAppointment(lineid, message); // ส่งข้อความไปยัง LINE
     }, 24 * 60 * 60 * 1000); // ตั้งเวลาให้ทำงานทุก 24 ชั่วโมง
 
     // เริ่มตั้งเวลาแจ้งเตือนครั้งแรก
     setTimeout(async () => {
-      const message = `แจ้งเตือนตามระยะเวลา\nรายละเอียด:\n${notification_details}`;
+      const message = `แจ้งเตือนตามระยะเวลาถึงคุณ ${patient.name}\nรายละเอียด:\n${notification_details}`;
       await sendLineAppointment(lineid, message); // ส่งข้อความไปยัง LINE
     }, delay);
   }
 }
 
-sendScheduledNotifications();
-sendNotificationsAppointment();
-
 // ✅ เริ่มเซิร์ฟเวอร์
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  sendNotificationsSendDate();
+  sendNotificationsAppointment();
+  sendScheduledNotifications();
 });
