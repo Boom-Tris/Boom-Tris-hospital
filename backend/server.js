@@ -491,15 +491,25 @@ app.get("/all-patients", async (req, res) => {
 // API สำหรับอัปเดตข้อมูลผู้ป่วย
 app.put("/update-patient", async (req, res) => {
   try {
-    // รับข้อมูลที่ต้องการอัปเดตจากคำขอ
-    const { lineUserId, name, email, tel, address, sickness, age, allergic } =
-      req.body;
+    // เพิ่ม console.log เพื่อดูข้อมูลที่ได้รับ
+    console.log("ข้อมูลที่ได้รับจาก frontend:", req.body);
+    
+    const { 
+      lineUserId, 
+      name, 
+      email, 
+      tel, 
+      address, 
+      sickness, 
+      age, 
+      allergic, 
+      appointment_date  // เพิ่มตัวนี้
+    } = req.body;
 
     if (!lineUserId) {
       return res.status(400).json({ message: "Missing lineUserId" });
     }
 
-    // ตรวจสอบว่ามีข้อมูลที่จะอัปเดตหรือไม่
     const updates = {};
     if (name) updates.name = name;
     if (email) updates.email = email;
@@ -508,14 +518,19 @@ app.put("/update-patient", async (req, res) => {
     if (sickness) updates.sickness = sickness;
     if (age) updates.age = age;
     if (allergic) updates.allergic = allergic;
+    // เพิ่มเงื่อนไขเพื่อเช็คว่า appointment_date มีค่าหรือไม่
+    if (appointment_date !== undefined) updates.appointment_date = appointment_date;
+    
+    console.log("ข้อมูลที่จะอัปเดท:", updates);
 
     // อัปเดตข้อมูลใน Supabase
     const { data, error } = await supabase
       .from("patient")
       .update(updates)
-      .eq("lineid", lineUserId); // ใช้ lineUserId เป็นตัวระบุผู้ป่วย
+      .eq("lineid", lineUserId);
 
     if (error) {
+      console.error("Supabase error:", error);
       return res
         .status(500)
         .json({ message: "Error updating patient data", error: error.message });
@@ -525,12 +540,12 @@ app.put("/update-patient", async (req, res) => {
       .status(200)
       .json({ message: "Patient data updated successfully", data });
   } catch (err) {
+    console.error("Server error:", err);
     return res
       .status(500)
       .json({ message: "Server error", error: err.message });
   }
 });
-
 app.post("/add-patient", async (req, res) => {
   try {
     const {
