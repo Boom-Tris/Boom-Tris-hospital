@@ -280,7 +280,7 @@ app.put("/update-patient", async (req, res) => {
       sickness, 
       age, 
       allergic, 
-      appointment_date  // เพิ่มตัวนี้
+      appointment_date  
     } = req.body;
 
     if (!lineUserId) {
@@ -295,12 +295,10 @@ app.put("/update-patient", async (req, res) => {
     if (sickness) updates.sickness = sickness;
     if (age) updates.age = age;
     if (allergic) updates.allergic = allergic;
-    // เพิ่มเงื่อนไขเพื่อเช็คว่า appointment_date มีค่าหรือไม่
     if (appointment_date !== undefined) updates.appointment_date = appointment_date;
     
     console.log("ข้อมูลที่จะอัปเดท:", updates);
 
-    // อัปเดตข้อมูลใน Supabase
     const { data, error } = await supabase
       .from("patient")
       .update(updates)
