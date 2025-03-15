@@ -21,7 +21,7 @@ body {
 #TextTyp {
     color: #271E4A;
    
-    font-weight: 700;
+    font-weight: 800;
 }
 .custom-calendar
 {
@@ -62,12 +62,7 @@ body {
     height: 90px;
  
   }
-  .custom-stat-card-content {
-    justify-content: left; /* Center content horizontally */
-    align-items: left; /* Center content vertically */
-   margin-left: 5vh;
-    text-align:left;
-    }
+
 /*Upload*/
 .custom-Upload {
     max-width: 90%;
