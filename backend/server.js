@@ -266,11 +266,10 @@ app.get("/all-patients-count", async (req, res) => {
 
 
 // API สำหรับอัปเดตข้อมูลผู้ป่วย
+// API สำหรับอัปเดตข้อมูลผู้ป่วย
 app.put("/update-patient", async (req, res) => {
   try {
-    // เพิ่ม console.log เพื่อดูข้อมูลที่ได้รับ
     console.log("ข้อมูลที่ได้รับจาก frontend:", req.body);
-    
     const { 
       lineUserId, 
       name, 
