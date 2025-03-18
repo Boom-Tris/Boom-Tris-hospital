@@ -107,8 +107,8 @@ const handleOpenConfirmGroupDelete = () => {
 
   const selectedPatients = rows.filter((row) => selectedIds.includes(row.patient_id));
 
-  setPatientsToDelete(selectedPatients); // อัปเดตรายชื่อผู้ป่วยที่จะแสดง
-  setOpenConfirmGroupDelete(true); // เปิด Dialog
+  setPatientsToDelete(selectedPatients); 
+  setOpenConfirmGroupDelete(true);
 };
 const handleDeletePatientInEdit = async () => {
   if (!selectedPatient) {
@@ -130,7 +130,6 @@ const handleDeletePatientInEdit = async () => {
 
     console.log(`✅ ลบสำเร็จ: ${selectedPatient.name}`);
 
-    // ✅ อัปเดต UI หลังลบ
     setRows((prevRows) => prevRows.filter((row) => row.patient_id !== selectedPatient.patient_id));
     setOpenEditDialog(false);
     setOpenConfirmDeleteInEdit(false);
@@ -144,20 +143,17 @@ const handleConfirmGroupDelete = async () => {
   if (selectedIds.length === 0) return;
 
   try {
-    // แสดงสถานะกำลังลบ
+    
     console.log("🟢 กำลังลบผู้ป่วย:", selectedIds);
     
-    // ลบทีละรายการ
     const deletePromises = selectedIds.map(id => 
       fetch(`http://localhost:3001/delete-patient/${id}`, {
         method: "DELETE"
       })
     );
     
-    // รอจนกว่าจะลบครบทุกรายการ
     const results = await Promise.allSettled(deletePromises);
     
-    // ตรวจสอบว่ามีข้อผิดพลาดหรือไม่
     const errors = results.filter(r => r.status === 'rejected' || (r.value && !r.value.ok));
     
     if (errors.length > 0) {
@@ -167,7 +163,6 @@ const handleConfirmGroupDelete = async () => {
       console.log("✅ ลบผู้ป่วยสำเร็จทั้งหมด:", selectedIds);
     }
 
-    // อัปเดต UI
     setRows(prevRows => prevRows.filter(row => !selectedIds.includes(row.patient_id)));
     setSelectedIds([]);
     setOpenConfirmGroupDelete(false);
