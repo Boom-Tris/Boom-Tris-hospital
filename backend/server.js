@@ -235,15 +235,15 @@ app.get("/all-patients-count", async (req, res) => {
     const { count: totalPatients, error: patientError } = await supabase
       .from("patient")
       .select("*", { count: "exact", head: true });
-     
-      const { count: totalDoctors, error: doctorError } = await supabase
+
+    const { count: totalDoctors, error: doctorError } = await supabase
       .from("medicalpersonnel")
       .select("medicalpersonnel_id", { count: "exact", head: true });
 
-      const { count: totalAppointments, error: appointmentError } = await supabase
+    const { count: totalAppointments, error: appointmentError } = await supabase
       .from("patient")
       .select("appointment_date", { count: "exact", head: true })
-      .not("appointment_date", "is", null);  // กรองแถวที่ appointment_date ไม่เป็น NULL
+      .not("appointment_date", "is", null); // กรองแถวที่ appointment_date ไม่เป็น NULL
 
     // ตรวจสอบข้อผิดพลาด
     if (patientError) {
@@ -255,32 +255,33 @@ app.get("/all-patients-count", async (req, res) => {
     if (appointmentError) {
       return res.status(500).send(appointmentError.message); // ใช้ appointmentError แทน error
     }
-   
-    res.status(200).json({ totalPatients: totalPatients,
-      totalDoctors: totalDoctors,  totalAppointments: totalAppointments,
-     });
+
+    res.status(200).json({
+      totalPatients: totalPatients,
+      totalDoctors: totalDoctors,
+      totalAppointments: totalAppointments,
+    });
   } catch (err) {
     res.status(500).send(err.message);
   }
 });
-
 
 // API สำหรับอัปเดตข้อมูลผู้ป่วย
 app.put("/update-patient", async (req, res) => {
   try {
     // เพิ่ม console.log เพื่อดูข้อมูลที่ได้รับ
     console.log("ข้อมูลที่ได้รับจาก frontend:", req.body);
-    
-    const { 
-      lineUserId, 
-      name, 
-      email, 
-      tel, 
-      address, 
-      sickness, 
-      age, 
-      allergic, 
-      appointment_date  
+
+    const {
+      lineUserId,
+      name,
+      email,
+      tel,
+      address,
+      sickness,
+      age,
+      allergic,
+      appointment_date,
     } = req.body;
 
     if (!lineUserId) {
@@ -295,8 +296,9 @@ app.put("/update-patient", async (req, res) => {
     if (sickness) updates.sickness = sickness;
     if (age) updates.age = age;
     if (allergic) updates.allergic = allergic;
-    if (appointment_date !== undefined) updates.appointment_date = appointment_date;
-    
+    if (appointment_date !== undefined)
+      updates.appointment_date = appointment_date;
+
     console.log("ข้อมูลที่จะอัปเดท:", updates);
 
     const { data, error } = await supabase
@@ -705,107 +707,23 @@ async function getPatientAppointment() {
   return data;
 }
 
-// ส่งการแจ้งเตือนวันที่กำหนดให้ผู้ป่วย
-async function sendNotificationsSendDate() {
-  const today = dayjs().format("YYYY-MM-DD");
+async function getPatientScheduled() {
+  const { data, error } = await supabase
+    .from("patient") // ชื่อตารางใน Supabase
+    .select(
+      "name, lineid, notification_date, notification_time, notification_details"
+    ); // เลือกคอลัมน์ที่ต้องการ
 
-  const patients = await getPatientAppointment();
-
-  const patientsToNotify = patients.filter(
-    (patient) =>
-      patient.lineid &&
-      patient.reminder_time &&
-      patient.appointment_senddate &&
-      patient.appointment_date &&
-      patient.appointment_details &&
-      patient.appointment_senddate === today
-  );
-
-  console.log("📌 ผู้ป่วยที่ต้องแจ้งเตือนวันนี้:", patientsToNotify);
-
-  for (const patient of patientsToNotify) {
-    const {
-      patient_id,
-      lineid,
-      reminder_time,
-      appointment_senddate,
-      appointment_date,
-      appointment_details,
-    } = patient;
-
-    const [hours, minutes, seconds] = reminder_time.split(":");
-    const reminderDateTime = dayjs(
-      `${appointment_senddate} ${hours}:${minutes}:${seconds}`
-    );
-    const delay = reminderDateTime.diff(dayjs());
-
-    // ดึงไฟล์ทั้งหมดที่เกี่ยวข้องจาก upload_logs
-    const { data: uploadData } = await supabase
-      .from("upload_logs")
-      .select("file_path, file_name")
-      .eq("patient_id", patient_id)
-      .order("uploaded_at", { ascending: false });
-
-    console.log("🖼 ไฟล์ที่พบสำหรับ", patient.name, uploadData);
-
-    let fileUrls = [];
-    let fileTypes = [];
-
-    if (uploadData?.length) {
-      for (const file of uploadData) {
-        let filePath = file.file_path;
-
-        // ตรวจสอบว่า filePath มีรูปแบบถูกต้อง
-        if (!filePath.startsWith("bucket888/")) {
-          filePath = `bucket888/${filePath}`; // เพิ่ม bucket888/ หากไม่มี
-        }
-
-        // ดึง URL ของไฟล์จาก Supabase Storage
-        const { data: publicUrlData } = supabase.storage
-          .from("bucket888")
-          .getPublicUrl(filePath);
-
-        if (publicUrlData) {
-          const fileUrl = publicUrlData.publicUrl; // กำหนด URL ของไฟล์
-          const fileType = filePath.split(".").pop().toLowerCase(); // ดึงชนิดของไฟล์
-
-          // ตรวจสอบว่าไฟล์สามารถเข้าถึงได้
-          try {
-            const response = await fetch(fileUrl, { method: "HEAD" });
-            if (response.ok) {
-              console.log("✅ ไฟล์สามารถเข้าถึงได้:", fileUrl);
-              fileUrls.push(fileUrl);
-              fileTypes.push(fileType);
-            } else {
-              console.log("❌ ไฟล์ไม่สามารถเข้าถึงได้:", fileUrl);
-            }
-          } catch (error) {
-            console.error("❌ เกิดข้อผิดพลาดในการตรวจสอบไฟล์:", error.message);
-          }
-        } else {
-          console.log(`❌ ไม่พบ publicURL สำหรับไฟล์: ${filePath}`);
-        }
-      }
-    } else {
-      console.log(`❌ ไม่พบไฟล์สำหรับ ${patient.name}`);
-    }
-
-    if (delay > 0) {
-      console.log(
-        `⏳ ตั้งเวลาส่งแจ้งเตือนให้ ${patient.name} ในเวลา ${reminder_time}`
-      );
-
-      setTimeout(async () => {
-        const message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
-        await sendLineAppointment(lineid, message, fileUrls, fileTypes);
-      }, delay);
-    } else {
-      console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${patient.name}`);
-    }
+  if (error) {
+    console.error("Error fetching patient data:", error);
+    return [];
   }
+  return data; // คืนค่าข้อมูลผู้ป่วย
 }
 
-// ส่งการแจ้งเตือนนัดหมายให้ผู้ป่วย
+const notificationTimeouts = new Map(); // เก็บ timeout ของการแจ้งเตือน
+
+// ฟังก์ชันที่ใช้ส่งการแจ้งเตือนนัดหมาย
 async function sendNotificationsAppointment() {
   const today = dayjs().format("YYYY-MM-DD");
   const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
@@ -839,6 +757,17 @@ async function sendNotificationsAppointment() {
     );
     const delay = reminderDateTime.diff(dayjs());
 
+    if (delay <= 0) {
+      console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${patient.name}`);
+      continue;
+    }
+
+    // เคลียร์การแจ้งเตือนเก่าหากมีการตั้งเวลาใหม่
+    if (notificationTimeouts.has(patient_id)) {
+      clearTimeout(notificationTimeouts.get(patient_id));
+      console.log(`🚫 ยกเลิกการแจ้งเตือนเก่าของ ${patient.name}`);
+    }
+
     // ดึงไฟล์ทั้งหมดที่เกี่ยวข้องจาก upload_logs
     const { data: uploadData } = await supabase
       .from("upload_logs")
@@ -846,34 +775,26 @@ async function sendNotificationsAppointment() {
       .eq("patient_id", patient_id)
       .order("uploaded_at", { ascending: false });
 
-    console.log("🖼 ไฟล์ที่พบสำหรับ", patient.name, uploadData);
-
     let fileUrls = [];
     let fileTypes = [];
 
     if (uploadData?.length) {
       for (const file of uploadData) {
         let filePath = file.file_path;
-
-        // ตรวจสอบว่า filePath มีรูปแบบถูกต้อง
         if (!filePath.startsWith("bucket888/")) {
-          filePath = `bucket888/${filePath}`; // เพิ่ม bucket888/ หากไม่มี
+          filePath = `bucket888/${filePath}`;
         }
-
-        // ดึง URL ของไฟล์จาก Supabase Storage
         const { data: publicUrlData } = supabase.storage
           .from("bucket888")
           .getPublicUrl(filePath);
 
         if (publicUrlData) {
-          const fileUrl = publicUrlData.publicUrl; // กำหนด URL ของไฟล์
-          const fileType = filePath.split(".").pop().toLowerCase(); // ดึงชนิดของไฟล์
+          const fileUrl = publicUrlData.publicUrl;
+          const fileType = filePath.split(".").pop().toLowerCase();
 
-          // ตรวจสอบว่าไฟล์สามารถเข้าถึงได้
           try {
             const response = await fetch(fileUrl, { method: "HEAD" });
             if (response.ok) {
-              console.log("✅ ไฟล์สามารถเข้าถึงได้:", fileUrl);
               fileUrls.push(fileUrl);
               fileTypes.push(fileType);
             } else {
@@ -882,73 +803,28 @@ async function sendNotificationsAppointment() {
           } catch (error) {
             console.error("❌ เกิดข้อผิดพลาดในการตรวจสอบไฟล์:", error.message);
           }
-        } else {
-          console.log(`❌ ไม่พบ publicURL สำหรับไฟล์: ${filePath}`);
         }
       }
-    } else {
-      console.log(`❌ ไม่พบไฟล์สำหรับ ${patient.name}`);
     }
 
-    if (delay > 0) {
-      console.log(
-        `⏳ ตั้งเวลาส่งแจ้งเตือนให้ ${patient.name} ในเวลา ${reminder_time}`
-      );
+    console.log(
+      `⏳ ตั้งเวลาส่งแจ้งเตือน Appointment ให้ ${patient.name} ในเวลา ${reminder_time}`
+    );
 
-      setTimeout(async () => {
-        const message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
-        await sendLineAppointment(lineid, message, fileUrls, fileTypes);
-      }, delay);
-    } else {
-      console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${patient.name}`);
-    }
+    const timeout = setTimeout(async () => {
+      const message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
+      await sendLineAppointment(lineid, message, fileUrls, fileTypes);
+    }, delay);
 
-    // เพิ่มโค้ดสำหรับการแจ้งเตือน 1 วันก่อนนัดหมาย
-    if (appointment_date === tomorrow) {
-      const reminderOneDayBefore = dayjs(`${appointment_date}`)
-        .subtract(1, "day")
-        .set("hour", hours)
-        .set("minute", minutes)
-        .set("second", seconds);
-
-      const delayBeforeAppointment = reminderOneDayBefore.diff(dayjs());
-
-      if (delayBeforeAppointment > 0) {
-        console.log(
-          `⏳ กำลังตั้งเวลาส่งแจ้งเตือน 1 วันก่อนนัดให้ ${patient.name} ในเวลา ${reminder_time}`
-        );
-
-        setTimeout(async () => {
-          const message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date} วันพรุ่งนี้\nรายละเอียด:\n${appointment_details}`;
-          await sendLineAppointment(lineid, message, fileUrls, fileTypes);
-        }, delayBeforeAppointment);
-      } else {
-        console.log(
-          `❌ เวลาที่ตั้งไว้สำหรับแจ้งเตือน 1 วันก่อนนัดผ่านไปแล้วสำหรับ ${patient.name}`
-        );
-      }
-    }
+    notificationTimeouts.set(patient_id, timeout); // บันทึก timeout สำหรับผู้ป่วยนี้
   }
 }
 
-async function getPatientScheduled() {
-  const { data, error } = await supabase
-    .from("patient") // ชื่อตารางใน Supabase
-    .select(
-      "name, lineid, notification_date, notification_time, notification_details"
-    ); // เลือกคอลัมน์ที่ต้องการ
-
-  if (error) {
-    console.error("Error fetching patient data:", error);
-    return [];
-  }
-  return data; // คืนค่าข้อมูลผู้ป่วย
-}
-
+// ฟังก์ชันที่ใช้ส่งการแจ้งเตือนตามเวลาที่ตั้งไว้
 async function sendScheduledNotifications() {
-  const today = dayjs().format("YYYY-MM-DD"); // วันที่ปัจจุบัน
+  const today = dayjs().format("YYYY-MM-DD");
 
-  const patients = await getPatientScheduled(); // ดึงข้อมูลผู้ป่วยจาก Supabase
+  const patients = await getPatientScheduled();
 
   const patientsToNotify = patients.filter(
     (patient) =>
@@ -956,15 +832,9 @@ async function sendScheduledNotifications() {
       patient.notification_time &&
       patient.notification_date &&
       patient.notification_details &&
-      dayjs(today).isBefore(dayjs(patient.notification_date).add(1, "day")) // ถ้าวันที่ปัจจุบันยังไม่เลย notification_date
+      dayjs(today).isBefore(dayjs(patient.notification_date).add(1, "day"))
   );
 
-  console.log(
-    "📌 ผู้ป่วยที่ต้องแจ้งเตือนตาม notification_date:",
-    patientsToNotify
-  );
-
-  // ส่งแจ้งเตือนตามเวลา
   for (const patient of patientsToNotify) {
     const {
       lineid,
@@ -974,39 +844,230 @@ async function sendScheduledNotifications() {
     } = patient;
     const [hours, minutes, seconds] = notification_time.split(":");
 
-    // คำนวณเวลาเริ่มต้นของการแจ้งเตือนในวันนี้ (ถ้าวันนี้ยังไม่ถึงเวลา)
     let reminderDateTime = dayjs(`${today} ${hours}:${minutes}:${seconds}`);
 
-    // ถ้าผ่านเวลาของวันนี้แล้ว ให้ตั้งเวลาแจ้งเตือนในวันถัดไป
     if (reminderDateTime.isBefore(dayjs())) {
       reminderDateTime = reminderDateTime.add(1, "day");
     }
 
-    // คำนวณระยะเวลาที่ต้องรอ (มิลลิวินาที)
     const delay = reminderDateTime.diff(dayjs());
 
+    // เคลียร์การแจ้งเตือนเก่าหากมีการตั้งเวลาใหม่
+    if (notificationTimeouts.has(patient.patient_id)) {
+      clearTimeout(notificationTimeouts.get(patient.patient_id));
+      console.log(`🚫 ยกเลิกการแจ้งเตือนเก่าของ ${patient.patient_id}`);
+    }
+
     console.log(
-      `⏳ กำลังตั้งเวลาส่งแจ้งเตือนให้ ${patient.name} ในเวลา ${notification_time}`
+      `⏳ ตั้งเวลาส่งแจ้งเตือน Scheduled ให้ ${patient.name} ในเวลา ${notification_time}`
     );
 
-    // ตั้งเวลาแจ้งเตือนทุกวัน
-    setInterval(async () => {
+    const timeout = setTimeout(async () => {
       const message = `แจ้งเตือนตามระยะเวลาถึงคุณ ${patient.name}\nรายละเอียด:\n${notification_details}`;
-      await sendLineAppointment(lineid, message); // ส่งข้อความไปยัง LINE
-    }, 24 * 60 * 60 * 1000); // ตั้งเวลาให้ทำงานทุก 24 ชั่วโมง
+      await sendLineAppointment(lineid, message);
 
-    // เริ่มตั้งเวลาแจ้งเตือนครั้งแรก
-    setTimeout(async () => {
-      const message = `แจ้งเตือนตามระยะเวลาถึงคุณ ${patient.name}\nรายละเอียด:\n${notification_details}`;
-      await sendLineAppointment(lineid, message); // ส่งข้อความไปยัง LINE
+      setInterval(async () => {
+        await sendLineAppointment(lineid, message);
+      }, 24 * 60 * 60 * 1000); // ส่งแจ้งเตือนทุก 24 ชั่วโมง
     }, delay);
+
+    notificationTimeouts.set(patient.patient_id, timeout); // บันทึก timeout สำหรับผู้ป่วยนี้
   }
 }
+
+// ฟังก์ชันที่ใช้ส่งการแจ้งเตือนวันที่กำหนด
+async function sendNotificationsSendDate() {
+  const today = dayjs().format("YYYY-MM-DD");
+
+  const patients = await getPatientAppointment();
+
+  const patientsToNotify = patients.filter(
+    (patient) =>
+      patient.lineid &&
+      patient.reminder_time &&
+      patient.appointment_senddate &&
+      patient.appointment_date &&
+      patient.appointment_details &&
+      patient.appointment_senddate === today
+  );
+
+  console.log("📌 ผู้ป่วยที่ต้องแจ้งเตือนวันนี้:", patientsToNotify);
+
+  for (const patient of patientsToNotify) {
+    const {
+      patient_id,
+      lineid,
+      reminder_time,
+      appointment_senddate,
+      appointment_date,
+      appointment_details,
+    } = patient;
+
+    const [hours, minutes, seconds] = reminder_time.split(":");
+    const reminderDateTime = dayjs(
+      `${appointment_senddate} ${hours}:${minutes}:${seconds}`
+    );
+    const delay = reminderDateTime.diff(dayjs());
+
+    if (delay <= 0) {
+      console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${patient.name}`);
+      continue;
+    }
+
+    // เคลียร์การแจ้งเตือนเก่าหากมีการตั้งเวลาใหม่
+    if (notificationTimeouts.has(patient_id)) {
+      clearTimeout(notificationTimeouts.get(patient_id));
+      console.log(`🚫 ยกเลิกการแจ้งเตือนเก่าของ ${patient.name}`);
+    }
+
+    // ตรวจสอบว่าไม่ได้ตั้งเวลาใหม่ซ้ำ
+    const timeoutExists = notificationTimeouts.has(patient_id);
+    if (timeoutExists) {
+      console.log(`❌ มีการตั้งเวลาแจ้งเตือนใหม่สำหรับ ${patient.name}`);
+      continue; // ข้ามไปที่ผู้ป่วยถัดไปหากมีการตั้งเวลาแล้ว
+    }
+
+    // ดึงไฟล์ทั้งหมดที่เกี่ยวข้องจาก upload_logs
+    const { data: uploadData } = await supabase
+      .from("upload_logs")
+      .select("file_path, file_name")
+      .eq("patient_id", patient_id)
+      .order("uploaded_at", { ascending: false });
+
+    let fileUrls = [];
+    let fileTypes = [];
+
+    if (uploadData?.length) {
+      for (const file of uploadData) {
+        let filePath = file.file_path;
+        if (!filePath.startsWith("bucket888/")) {
+          filePath = `bucket888/${filePath}`;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from("bucket888")
+          .getPublicUrl(filePath);
+
+        if (publicUrlData) {
+          const fileUrl = publicUrlData.publicUrl;
+          const fileType = filePath.split(".").pop().toLowerCase();
+
+          try {
+            const response = await fetch(fileUrl, { method: "HEAD" });
+            if (response.ok) {
+              fileUrls.push(fileUrl);
+              fileTypes.push(fileType);
+            } else {
+              console.log("❌ ไฟล์ไม่สามารถเข้าถึงได้:", fileUrl);
+            }
+          } catch (error) {
+            console.error("❌ เกิดข้อผิดพลาดในการตรวจสอบไฟล์:", error.message);
+          }
+        }
+      }
+    }
+
+    console.log(
+      `⏳ ตั้งเวลาส่งแจ้งเตือน Senddate ให้ ${patient.name} ในเวลา ${reminder_time}`
+    );
+
+    // ตั้งเวลาส่งการแจ้งเตือน
+    const timeout = setTimeout(async () => {
+      const message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
+      await sendLineAppointment(lineid, message, fileUrls, fileTypes);
+    }, delay);
+
+    // บันทึก timeout สำหรับผู้ป่วยนี้
+    notificationTimeouts.set(patient_id, timeout);
+  }
+}
+
+const lastUpdatedMap = new Map();
+
+async function checkForUpdates() {
+  try {
+    const { data: patients, error } = await supabase
+      .from("patient")
+      .select(
+        "patient_id, updated_at_senddate, updated_at_appointment, updated_at_scheduled"
+      );
+
+    if (error) {
+      console.error("❌ Error fetching patient data:", error);
+      return;
+    }
+
+    for (const patient of patients) {
+      const {
+        patient_id,
+        updated_at_senddate,
+        updated_at_appointment,
+        updated_at_scheduled,
+      } = patient;
+
+      if (!lastUpdatedMap.has(patient_id)) {
+        lastUpdatedMap.set(patient_id, {
+          senddate: null,
+          appointment: null,
+          scheduled: null,
+        });
+      }
+
+      // ตรวจสอบการเปลี่ยนแปลงสำหรับ SendDate
+      if (
+        !lastUpdatedMap.get(patient_id).senddate ||
+        (updated_at_senddate &&
+          !dayjs(lastUpdatedMap.get(patient_id).senddate).isSame(
+            dayjs(updated_at_senddate)
+          ))
+      ) {
+        console.log(
+          `🔄 พบการเปลี่ยนแปลง (SendDate) สำหรับผู้ป่วย ID: ${patient_id}`
+        );
+        sendNotificationsSendDate(patient_id);
+        lastUpdatedMap.get(patient_id).senddate = updated_at_senddate;
+      }
+
+      // ตรวจสอบการเปลี่ยนแปลงสำหรับ Appointment
+      if (
+        !lastUpdatedMap.get(patient_id).appointment ||
+        (updated_at_appointment &&
+          !dayjs(lastUpdatedMap.get(patient_id).appointment).isSame(
+            dayjs(updated_at_appointment)
+          ))
+      ) {
+        console.log(
+          `🔄 พบการเปลี่ยนแปลง (Appointment) สำหรับผู้ป่วย ID: ${patient_id}`
+        );
+        sendNotificationsAppointment(patient_id);
+        lastUpdatedMap.get(patient_id).appointment = updated_at_appointment;
+      }
+
+      // ตรวจสอบการเปลี่ยนแปลงสำหรับ Scheduled
+      if (
+        !lastUpdatedMap.get(patient_id).scheduled ||
+        (updated_at_scheduled &&
+          !dayjs(lastUpdatedMap.get(patient_id).scheduled).isSame(
+            dayjs(updated_at_scheduled)
+          ))
+      ) {
+        console.log(
+          `🔄 พบการเปลี่ยนแปลง (Scheduled) สำหรับผู้ป่วย ID: ${patient_id}`
+        );
+        sendScheduledNotifications(patient_id);
+        lastUpdatedMap.get(patient_id).scheduled = updated_at_scheduled;
+      }
+    }
+  } catch (err) {
+    console.error("❌ Error checking for updates:", err);
+  }
+}
+
+// รันทุก 1 นาที
+setInterval(checkForUpdates, 60 * 1000);
 
 // ✅ เริ่มเซิร์ฟเวอร์
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  sendNotificationsSendDate();
-  sendNotificationsAppointment();
-  sendScheduledNotifications();
+  checkForUpdates(); // เรียกตรวจสอบการอัปเดตทันทีเมื่อเซิร์ฟเวอร์เริ่ม
 });
