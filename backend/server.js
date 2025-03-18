@@ -279,7 +279,8 @@ app.put("/update-patient", async (req, res) => {
       sickness, 
       age, 
       allergic, 
-      appointment_date  
+      appointment_date,
+      status  
     } = req.body;
 
     if (!lineUserId) {
@@ -295,7 +296,7 @@ app.put("/update-patient", async (req, res) => {
     if (age) updates.age = age;
     if (allergic) updates.allergic = allergic;
     if (appointment_date !== undefined) updates.appointment_date = appointment_date;
-    
+    if (status) updates.status = status;
     console.log("ข้อมูลที่จะอัปเดท:", updates);
 
     const { data, error } = await supabase
@@ -332,6 +333,7 @@ app.post("/add-patient", async (req, res) => {
       tel,
       email,
       appointment_date,
+      status
     } = req.body;
 
     const { data, error } = await supabase
@@ -347,6 +349,7 @@ app.post("/add-patient", async (req, res) => {
           tel,
           email,
           appointment_date,
+          status
         },
       ])
       .select();
@@ -356,6 +359,8 @@ app.post("/add-patient", async (req, res) => {
         .status(500)
         .json({ message: "Error adding patient", error: error.message });
     }
+  
+
 
     res.status(201).json(data[0]);
   } catch (err) {
@@ -375,6 +380,7 @@ app.delete("/delete-patient/:id", async (req, res) => {
       .eq("patient_id", id);
 
     if (error) {
+      console.error("Supabase error:", error);
       return res
         .status(500)
         .json({ message: "Error deleting patient", error: error.message });

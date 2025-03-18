@@ -1,6 +1,7 @@
 import React, { useState, useEffect} from 'react';
-import { Typography, TextField, IconButton, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent , MenuItem ,Menu ,RadioGroup , FormControlLabel , Radio  } from '@mui/material';
+import { Typography, TextField, IconButton, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent , MenuItem ,Menu ,RadioGroup , FormControlLabel , Radio   } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import DeleteIcon from '@mui/icons-material/Delete'; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {  faCog, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -49,8 +50,8 @@ const Patient = () => {
   };
   
 
-  const [selectedAgeType, setSelectedAgeType] = useState('');
-  const [ageInput, setAgeInput] = useState('');
+  const [selectedAgeType, setSelectedAgeType] = useState(''); // มากกว่า/น้อยกว่า
+  const [ageInput, setAgeInput] = useState(''); // ค่าอายุที่กรอก
   const [selectedStatus, setSelectedStatus] = useState('');
   const [filteredRows, setFilteredRows] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null); 
@@ -59,7 +60,6 @@ const Patient = () => {
   setAnchorEl(event.currentTarget);
 };
 
-  
 
 const [anchorElManagement, setAnchorElManagement] = useState(null);
 const openManagementMenu = Boolean(anchorElManagement);
@@ -196,7 +196,17 @@ const handleConfirmGroupDelete = async () => {
     setFilteredRows(filtered);
     setAnchorEl(null); 
   };
-  
+  const [anchorElGroup, setAnchorElGroup] = useState(null);
+  const openGroupMenu = Boolean(anchorElGroup);
+
+const handleGroupMenuOpen = (event) => {
+  setAnchorElGroup(event.currentTarget);
+};
+
+const handleGroupMenuClose = () => {
+  setAnchorElGroup(null);
+};
+
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedDiseases, setSelectedDiseases] = useState('');
   const [selectedProvinces, setSelectedProvinces] = useState('');
@@ -284,8 +294,8 @@ const handleConfirmGroupDelete = async () => {
   };
 
   const handleViewRow = (patient) => {
-    setSelectedViewPatient(patient);  
-    setOpenViewDialog(true); 
+    setSelectedViewPatient(patient);  // ตั้งค่า selectedViewPatient ให้เป็นผู้ป่วยที่เลือก
+    setOpenViewDialog(true);  // เปิด Dialog เพื่อแสดงข้อมูล
   };
   
   const handleUpdatePatient = async () => {
@@ -300,7 +310,8 @@ const handleConfirmGroupDelete = async () => {
       allergic: selectedPatient.allergic,
       sickness: selectedPatient.sickness,
       address: selectedPatient.address,
-      appointment_date: selectedPatient.appointment_date || null, // ✅ ใช้ค่าเดิมที่แปลงจาก DatePicker
+      appointment_date: selectedPatient.appointment_date || null, 
+      status: selectedPatient.status,
     };
     
     console.log("📦 Payload ที่ส่งไป:", payload);
@@ -370,267 +381,88 @@ const handleConfirmGroupDelete = async () => {
       <IconButton color="primary" onClick={() => handleEditRow(params.row)}>
         <FontAwesomeIcon icon={faCog} />
       </IconButton>
-    <Dialog
-  open={openConfirmDeleteDialog}
-  onClose={() => setOpenConfirmDeleteDialog(false)}
-  aria-labelledby="confirm-delete-dialog-title"
-  maxWidth="sm" 
-  fullWidth 
-  disableBackdropClick 
-  disableEscapeKeyDown 
-  PaperProps={{
-    sx: {
-      backgroundColor: 'white', 
-      boxShadow: 'none', 
-      borderRadius: '12px', 
-      padding: '20px', 
-    },
-  }}
->
-  <DialogTitle id="confirm-delete-dialog-title" sx={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
-    ยืนยันการลบ
-  </DialogTitle>
-  <DialogContent>
-    <Typography variant="body1" sx={{ fontSize: '1.1rem', marginBottom: '10px' }}>
-      คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลผู้ป่วยเหล่านี้?
-    </Typography>
-    <ul>
-      {patientToDelete && patientToDelete.map((patient) => (
-        <li key={patient.patient_id} style={{ fontSize: '1rem', marginBottom: '5px' }}>
-          {patient.name}
-        </li>
-      ))}
-    </ul>
-  </DialogContent>
-  <DialogActions>
-    <Button 
-      onClick={() => setOpenConfirmDeleteDialog(false)} 
-      color="primary"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ยกเลิก
-    </Button>
-    <Button 
-      onClick={confirmDeletePatient} 
-      color="error"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ลบ
-    </Button>
-  </DialogActions>
-</Dialog>
-
-
 
         </>
       ),
     },
   ];
+  const groupManagementComponent = (
+    <>
+      <Button
+        variant="outlined"
+        onClick={handleGroupMenuOpen}
+        sx={{
+          textTransform: "none",
+          fontSize: "14px",
+          padding: "4.5px 14px",
+          minWidth: "120px",
+          whiteSpace: 'nowrap',
+          color: "rgba(0, 0, 0, 0.87)", 
+          borderColor: "rgba(0, 0, 0, 0.23)",
+          "&:hover": {
+            backgroundColor: "#f5f5f5", 
+            borderColor: "rgba(0, 0, 0, 0.87)",
+          },marginLeft : "-5px"
+        }}
+      >
+        การจัดการหมู่▼
+      </Button>
+  
+      <Menu
+        anchorEl={anchorElGroup}
+        open={openGroupMenu}
+        onClose={handleGroupMenuClose}
+      >
+        <MenuItem
+  onClick={() => {
+    handleGroupMenuClose();
+    handleOpenConfirmGroupDelete(); 
+  }}
+  sx={{
+    color: "red", 
+    "&:hover": {
+      backgroundColor: "#ffebee", 
+      },
+    }}
+        >
+    <DeleteIcon sx={{ fontSize: "1rem", marginRight: "8px" }} /> 
+  ลบผู้ป่วยแบบหมู่
+</MenuItem>
+      </Menu>
+    </>
+  );
+  
 
   return (
-    <div>
-      <Typography variant="h3" gutterBottom>Patient</Typography>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-  <Box sx={{ marginRight: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
-  <TextField 
-    label="Search" 
-    variant="outlined" 
-    size="small" 
-    value={search} 
-    onChange={handleSearch}
-    className="searchTextField"
-  />
-<Button
-  variant="outlined"
-  onClick={handleClick}
-  sx={{
-    textTransform: "none",
-    fontSize: "14px",
-    padding: "4px 10px",
-    minWidth: "90px",
-    color: "rgba(0, 0, 0, 0.87)", 
-    borderColor: "rgba(0, 0, 0, 0.23)",
-    "&:hover": {
-      backgroundColor: "#f5f5f5", 
-      borderColor: "rgba(0, 0, 0, 0.87)",
-    },
-  }}
->
-  Filter ▼
-</Button>
-<Menu
-  anchorEl={anchorEl}
-  open={open}
-  onClose={handleFilterConfirm}  
-  sx={{ padding: '8px' }}
->
-  <MenuItem>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
-      <Typography sx={{ fontWeight: 'bold' }}>อายุ</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <RadioGroup
-          row
-          value={selectedAgeType}
-          onChange={(e) => setSelectedAgeType(e.target.value)}
-        >
-          <FormControlLabel value="more" control={<Radio />} label="มากกว่า" />
-          <FormControlLabel value="less" control={<Radio />} label="น้อยกว่า" />
-        </RadioGroup>
-        <TextField 
-          type="number"
-          size="small"
-          value={ageInput}
-          onChange={(e) => setAgeInput(e.target.value)}
-          sx={{ width: '80px' }}
-        />
-      </Box>
-    </Box>
-  </MenuItem>
-
-  <MenuItem>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
-      <Typography sx={{ fontWeight: 'bold' }}>สถานะ</Typography>
-      <RadioGroup
-        row
-        value={selectedStatus}
-        onChange={(e) => setSelectedStatus(e.target.value)}
-      >
-        <FormControlLabel value="Active" control={<Radio />} label="Active" />
-        <FormControlLabel value="Inactive" control={<Radio />} label="Inactive" />
-      </RadioGroup>
-    </Box>
-  </MenuItem>
-
-  <MenuItem>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
-      <Typography sx={{ fontWeight: 'bold' }}>กรองโรค</Typography>
-      <TextField 
-        placeholder="เช่น หวัด,เบาหวาน"
-        size="small"
-        value={selectedDiseases}
-        onChange={(e) => setSelectedDiseases(e.target.value)}
-        sx={{ width: '100%' }}
+    <>
+      <PatientTableInternal
+        rows={rows}
+        filteredRows={filteredRows}
+        columns={columns}
+        search={search}
+        handleSearch={handleSearch}
+        anchorEl={anchorEl}
+        open={open}
+        handleClick={handleClick}
+        handleFilterConfirm={handleFilterConfirm}
+        selectedAgeType={selectedAgeType}
+        ageInput={ageInput}
+        selectedStatus={selectedStatus}
+        selectedDiseases={selectedDiseases}
+        selectedProvinces={selectedProvinces}
+        setSelectedAgeType={setSelectedAgeType}
+        setAgeInput={setAgeInput}
+        setSelectedStatus={setSelectedStatus}
+        setSelectedDiseases={setSelectedDiseases}
+        setSelectedProvinces={setSelectedProvinces}
+        handleReset={handleReset}
+        handleRowSelection={handleRowSelection}
+        selectedIds={selectedIds}
+        showSelection={true}
+        groupManagementComponent={groupManagementComponent}
       />
-    </Box>
-  </MenuItem>
-
-  <MenuItem>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
-      <Typography sx={{ fontWeight: 'bold' }}>จังหวัด</Typography>
-      <TextField 
-        placeholder="เช่น กรุงเทพ,เชียงใหม่"
-        size="small"
-        value={selectedProvinces}
-        onChange={(e) => setSelectedProvinces(e.target.value)}
-        sx={{ width: '100%' }}
-      />
-    </Box>
-  </MenuItem>
-
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, px: 2 }}>
-  <Button 
-  variant="outlined" 
-  onClick={handleReset}
-  sx={{ 
-    padding: "6px 12px", 
-    minWidth: "auto",
-    borderRadius: "5px",
-    ml: 0.5,
-    fontSize: "1rem", 
-    fontWeight: "bold", 
-    display: "flex",
-    alignItems: "center",
-    gap: "8px", 
-    color: "red",                 
-    borderColor: "red",            
-    "&:hover": {
-      backgroundColor: "#ffebee",   
-      borderColor: "darkred",       
-    }
-  }}
->
-  รีเซ็ต 🔄
-</Button>
-
-
-<Button 
-  variant="outlined" 
-  onClick={handleFilterConfirm} 
-  color="success"
-  sx={{ 
-    padding: "6px 12px", 
-    minWidth: "auto",
-    borderRadius: "5px",
-    ml: 0.5,
-    fontSize: "1rem", 
-    fontWeight: "bold", 
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  }}
->
-  ค้นหา✅
-</Button>
-</Box>
-
-</Menu>
-
-<Button
-  variant="outlined"
-  onClick={handleManagementOpen}
-  sx={{ 
-    textTransform: "none",
-    fontSize: "14px", 
-    padding: "4px 10px", 
-    minWidth: "auto", 
-    color: "rgba(0, 0, 0, 0.87)",           
-    borderColor: "rgba(0, 0, 0, 0.23)",     
-    "&:hover": {
-      backgroundColor: "#f5f5f5",           
-      borderColor: "rgba(0, 0, 0, 0.87)",   
-    }
-  }}
->
-  การจัดการหมู่▼
-</Button>
-
-<Menu
-  anchorEl={anchorElManagement} 
-  open={openManagementMenu}
-  onClose={handleManagementClose}
-  sx={{ padding: '8px' }}
->
-<MenuItem 
-  onClick={handleOpenConfirmGroupDelete}
-  sx={{ padding: '4px 8px', minWidth: 'auto' }} 
->
-<Typography 
-  sx={{ fontWeight: 'normal', color: 'red', fontSize: '0.875rem' }} 
->
-  ลบผู้ป่วยที่เลือก🗑️
-</Typography>
-
-</MenuItem>
-
-
-</Menu>
-
-</Box>
-</div>
-      <DataGrid
-  rows={filteredRows} 
-  columns={columns}
-  pageSize={5}
-  rowsPerPageOptions={[5, 10, 15]}
-  checkboxSelection
-  getRowId={(row) => row.patient_id}
-  onRowSelectionModelChange={handleRowSelection}
-  selectionModel={selectedIds}
-  className="dataGridStyle"
-/>
-
-<Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
+  
+  <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
   <DialogTitle>แก้ไขข้อมูลผู้ป่วย</DialogTitle>
   <DialogContent>
     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
@@ -702,7 +534,7 @@ const handleConfirmGroupDelete = async () => {
           fullWidth
         >
           <MenuItem value="Active">Active ✅</MenuItem>
-          <MenuItem value="Inactive">Inactive ❌</MenuItem>
+          <MenuItem value="InActive">InActive ❌</MenuItem>
         </TextField>
 
         <TextField 
@@ -713,7 +545,7 @@ const handleConfirmGroupDelete = async () => {
           fullWidth 
           error={selectedPatient?.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(selectedPatient.email)}
           helperText={selectedPatient?.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(selectedPatient.email) ? "กรุณากรอกอีเมลที่ถูกต้อง" : ""}
-          sx={{ gridColumn: 'span 2' }} 
+          sx={{ gridColumn: 'span 2' }} // ✅ ทำให้ขยายเต็ม 2 คอลัมน์
 />
 
       </Box>
@@ -725,14 +557,14 @@ const handleConfirmGroupDelete = async () => {
     value={selectedPatient?.appointment_date ? new Date(selectedPatient.appointment_date) : null}
     onChange={(date) => {
       if (date) {
-        const formattedDate = date.toISOString().split('T')[0];
-        console.log("📅 วันนัดหมายที่เลือก:", formattedDate);
+        const formattedDate = date.toISOString().split('T')[0]; // แปลงเป็น "YYYY-MM-DD"
+        console.log("📅 วันนัดหมายที่เลือก:", formattedDate); // Debug
         setSelectedPatient((prev) => {
           const updated = {
             ...prev,
             appointment_date: formattedDate
           };
-          console.log("🔄 ข้อมูลผู้ป่วยหลังอัพเดท:", updated); 
+          console.log("🔄 ข้อมูลผู้ป่วยหลังอัพเดท:", updated); // Debug
           return updated;
         });
       } else {
@@ -782,168 +614,278 @@ const handleConfirmGroupDelete = async () => {
 
 </Dialog> 
 
-<Dialog
-  open={openConfirmGroupDelete}
-  onClose={() => setOpenConfirmGroupDelete(false)}
-  maxWidth="sm"
-  fullWidth
->
-  <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>⚠️ ยืนยันการลบ</DialogTitle>
-  <DialogContent>
-    <Typography variant="body1" sx={{ marginBottom: 2 }}>
-      คุณแน่ใจหรือไม่ว่าต้องการลบผู้ป่วยเหล่านี้?
-    </Typography>
-    <ul>
-      {patientsToDelete.map((patient) => (
-        <li key={patient.patient_id} style={{ fontSize: '1rem', marginBottom: '5px' }}>
-          {patient.name}
-        </li>
-      ))}
-    </ul>
-  </DialogContent>
-  <DialogActions>
-    <Button 
-      onClick={() => setOpenConfirmGroupDelete(false)} 
-      color="primary"
-      sx={{ fontSize: '1rem', fontWeight: 'bold'  }}
-    >
-      ยกเลิก
-    </Button>
-    <Button 
-      onClick={handleConfirmGroupDelete} 
-      color="error"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ยืนยันการลบ
-    </Button>
-  </DialogActions>
-</Dialog>
-
-
-
-<Dialog
-  open={openConfirmDeleteInEdit}
-  onClose={() => setOpenConfirmDeleteInEdit(false)}
-  maxWidth="sm"
-  fullWidth
->
-  <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>⚠️ ยืนยันการลบ</DialogTitle>
-  <DialogContent>
-    <Typography variant="body1" sx={{ marginBottom: 2 }}>
-      คุณแน่ใจหรือไม่ว่าต้องการลบ <b>{selectedPatient?.name}</b> ?
-    </Typography>
-  </DialogContent>
-  <DialogActions>
-    <Button 
-      onClick={() => setOpenConfirmDeleteInEdit(false)} 
-      color="primary"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ยกเลิก
-    </Button>
-    <Button 
-      onClick={handleDeletePatientInEdit} 
-      color="error"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ยืนยันการลบ
-    </Button>
-  </DialogActions>
-</Dialog>
-
-
-<Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)}>
-  <DialogTitle sx={{ position: 'relative', textAlign: 'center' }}>
-    ข้อมูลผู้ป่วย
-    <IconButton 
-      onClick={() => setOpenViewDialog(false)} 
-      sx={{ 
-        position: 'absolute', 
-        left: 10,  
-        top: 10,   
-      }}
-    >
-      ❌
-    </IconButton>
-  </DialogTitle>
-  <DialogContent>
-  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
-  <TextField 
-    label="ชื่อ-นามสกุล" 
-    value={selectedViewPatient?.name || ''} 
-    fullWidth 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
-  <TextField 
-    label="อายุ" 
-    value={selectedViewPatient?.age || ''} 
-    fullWidth 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
   
-  <TextField 
-    label="อาการแพ้" 
-    value={selectedViewPatient?.allergic || ''} 
-    fullWidth 
-    multiline 
-    rows={3}
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
-  <TextField 
-    label="โรคประจำตัว" 
-    value={selectedViewPatient?.sickness || ''} 
-    fullWidth 
-    multiline 
-    rows={3} 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
+      <Dialog open={openConfirmGroupDelete} onClose={() => setOpenConfirmGroupDelete(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>⚠️ ยืนยันการลบ</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ marginBottom: 2 }}>
+            คุณแน่ใจหรือไม่ว่าต้องการลบผู้ป่วยเหล่านี้?
+          </Typography>
+          <ul>
+            {patientsToDelete.map((patient) => (
+              <li key={patient.patient_id} style={{ fontSize: '1rem', marginBottom: '5px' }}>
+                {patient.name}
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenConfirmGroupDelete(false)} color="primary" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+            ยกเลิก
+          </Button>
+          <Button onClick={handleConfirmGroupDelete} color="error" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+            ยืนยันการลบ
+          </Button>
+        </DialogActions>
+      </Dialog>
   
-  <TextField 
-    label="ที่อยู่" 
-    value={selectedViewPatient?.address || ''} 
-    fullWidth 
-    multiline 
-    rows={3} 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
+      <Dialog open={openConfirmDeleteInEdit} onClose={() => setOpenConfirmDeleteInEdit(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>⚠️ ยืนยันการลบ</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ marginBottom: 2 }}>
+            คุณแน่ใจหรือไม่ว่าต้องการลบ <b>{selectedPatient?.name}</b> ?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenConfirmDeleteInEdit(false)} color="primary" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+            ยกเลิก
+          </Button>
+          <Button onClick={handleDeletePatientInEdit} color="error" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+            ยืนยันการลบ
+          </Button>
+        </DialogActions>
+      </Dialog>
   
-  <TextField 
-    label="เบอร์โทรศัพท์" 
-    value={selectedViewPatient?.tel || ''} 
-    fullWidth 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
-  <LocalizationProvider dateAdapter={AdapterDateFns}>
-    <DatePicker
-      label="วันนัดหมาย"
-      value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
-      disabled={true} 
-      slots={{
-        textField: (params) => (
-          <TextField
-            {...params}
-            fullWidth
-            variant="outlined"
-            slotProps={{ inputLabel: { shrink: true } }}
-            value={selectedViewPatient?.appointment_date ? params.value : "ยังไม่ได้นัด"}  
-          />
-        ),
-      }}
-    />
-  </LocalizationProvider>
-</Box>
-
-  </DialogContent>
-</Dialog>
-
-    </div>
+      <Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)}>
+        <DialogTitle sx={{ position: 'relative', textAlign: 'center' }}>
+          ข้อมูลผู้ป่วย
+          <IconButton
+            onClick={() => setOpenViewDialog(false)}
+            sx={{
+              position: 'absolute',
+              left: 10,
+              top: 10,
+            }}
+          >
+            ❌
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
+            <TextField label="ชื่อ-นามสกุล" value={selectedViewPatient?.name || ''} fullWidth variant="outlined" />
+            <TextField label="อายุ" value={selectedViewPatient?.age || ''} fullWidth variant="outlined" />
+            <TextField label="อาการแพ้" value={selectedViewPatient?.allergic || ''} fullWidth multiline rows={3} variant="outlined" />
+            <TextField label="โรคประจำตัว" value={selectedViewPatient?.sickness || ''} fullWidth multiline rows={3} variant="outlined" />
+            <TextField label="ที่อยู่" value={selectedViewPatient?.address || ''} fullWidth multiline rows={3} variant="outlined" />
+            <TextField label="เบอร์โทรศัพท์" value={selectedViewPatient?.tel || ''} fullWidth variant="outlined" />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="วันนัดหมาย"
+                value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
+                disabled={true}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    variant: 'outlined',
+                  },
+                }}
+              />
+            </LocalizationProvider>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    </>
   );
+  
+
+  
 };
 
+
+
 export default Patient;
+export const PatientTableInternal = ({
+  rows,
+  filteredRows,
+  columns,
+  search,
+  handleSearch,
+  anchorEl,
+  open,
+  handleClick,
+  handleFilterConfirm,
+  selectedAgeType,
+  ageInput,
+  selectedStatus,
+  selectedDiseases,
+  selectedProvinces,
+  setSelectedAgeType,
+  setAgeInput,
+  setSelectedStatus,
+  setSelectedDiseases,
+  setSelectedProvinces,
+  handleReset,
+  handleRowSelection,
+  selectedIds,
+  showSelection = true,
+  groupManagementComponent = null,
+  height = "auto"
+}) => {
+  return (
+    <div>
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+    <Box sx={{ marginRight: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <TextField 
+        label="Search" 
+        variant="outlined" 
+        size="small" 
+        value={search} 
+        onChange={handleSearch}
+        className="searchTextField"
+      />
+      <Button
+        variant="outlined"
+        onClick={handleClick}
+        sx={{
+          textTransform: "none",
+          fontSize: "14px",
+          padding: "4px 10px",
+          minWidth: "90px",
+          color: "rgba(0, 0, 0, 0.87)", 
+          borderColor: "rgba(0, 0, 0, 0.23)",
+          "&:hover": {
+            backgroundColor: "#f5f5f5", 
+            borderColor: "rgba(0, 0, 0, 0.87)",
+          },
+        }}
+      >
+        Filter▼
+      </Button>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleFilterConfirm}  
+        sx={{ padding: '8px' }}
+      >
+        <MenuItem>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 'bold' }}>อายุ</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <RadioGroup
+                row
+                value={selectedAgeType}
+                onChange={(e) => setSelectedAgeType(e.target.value)}
+              >
+                <FormControlLabel value="more" control={<Radio />} label="มากกว่า" />
+                <FormControlLabel value="less" control={<Radio />} label="น้อยกว่า" />
+              </RadioGroup>
+              <TextField 
+                type="number"
+                size="small"
+                value={ageInput}
+                onChange={(e) => setAgeInput(e.target.value)}
+                sx={{ width: '80px' }}
+              />
+            </Box>
+          </Box>
+        </MenuItem>
+
+        <MenuItem>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 'bold' }}>สถานะ</Typography>
+            <RadioGroup
+              row
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+            >
+              <FormControlLabel value="Active" control={<Radio />} label="Active" />
+              <FormControlLabel value="InActive" control={<Radio />} label="InActive" />
+            </RadioGroup>
+          </Box>
+        </MenuItem>
+
+        <MenuItem>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 'bold' }}>กรองโรค</Typography>
+            <TextField 
+              placeholder="เช่น หวัด,เบาหวาน"
+              size="small"
+              value={selectedDiseases}
+              onChange={(e) => setSelectedDiseases(e.target.value)}
+              sx={{ width: '100%' }}
+            />
+          </Box>
+        </MenuItem>
+
+        <MenuItem>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 'bold' }}>จังหวัด</Typography>
+            <TextField 
+              placeholder="เช่น กรุงเทพ,เชียงใหม่"
+              size="small"
+              value={selectedProvinces}
+              onChange={(e) => setSelectedProvinces(e.target.value)}
+              sx={{ width: '100%' }}
+            />
+          </Box>
+        </MenuItem>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, px: 2 }}>
+          <Button 
+            variant="outlined" 
+            onClick={handleReset}
+            sx={{ 
+              padding: "6px 12px", 
+              borderRadius: "5px",
+              fontSize: "1rem", 
+              fontWeight: "bold", 
+              color: "red",                 
+              borderColor: "red",            
+              "&:hover": {
+                backgroundColor: "#ffebee",   
+                borderColor: "darkred",       
+              }
+            }}
+          >
+            รีเซ็ต
+          </Button>
+          <Button 
+            variant="outlined" 
+            onClick={handleFilterConfirm} 
+            color="success"
+            sx={{ 
+              padding: "6px 12px", 
+              borderRadius: "5px",
+              fontSize: "1rem", 
+              fontWeight: "bold", 
+            }}
+          >
+            ค้นหา
+          </Button>
+        </Box>
+      </Menu>
+
+      {groupManagementComponent && (
+        <Box sx={{ ml: 2 }}>
+          {groupManagementComponent}
+        </Box>
+      )}
+    </Box>
+  </div>
+
+  {/* ✅ DataGrid อยู่ล่างสุด */}
+  <DataGrid
+    rows={filteredRows} 
+    columns={columns}
+    pageSize={5}
+    rowsPerPageOptions={[5, 10, 15]}
+    checkboxSelection={showSelection}
+    getRowId={(row) => row.patient_id}
+    onRowSelectionModelChange={handleRowSelection}
+    selectionModel={selectedIds}
+    className="dataGridStyle"
+    autoHeight
+  />
+</div>
+  );
+};
