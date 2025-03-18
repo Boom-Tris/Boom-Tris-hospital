@@ -38,6 +38,129 @@ const Patient = () => {
     setSelectedIds(newSelection);
   };
   
+
+  const handleReset = () => {
+    setSelectedAgeType('');
+    setAgeInput('');
+    setSelectedStatus('');
+    setSelectedDiseases('');
+    setSelectedProvinces('');
+  };
+  
+
+  const [selectedAgeType, setSelectedAgeType] = useState(''); // มากกว่า/น้อยกว่า
+  const [ageInput, setAgeInput] = useState(''); // ค่าอายุที่กรอก
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [filteredRows, setFilteredRows] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null); 
+  const open = Boolean(anchorEl);
+  const handleClick = (event) => {
+  setAnchorEl(event.currentTarget);
+};
+
+
+const [anchorElManagement, setAnchorElManagement] = useState(null);
+const openManagementMenu = Boolean(anchorElManagement);
+
+const handleManagementOpen = (event) => {
+  setAnchorElManagement(event.currentTarget);
+};
+
+const handleManagementClose = () => {
+  setAnchorElManagement(null);
+};
+
+const handleOpenConfirmDeleteInEdit = () => {
+  setOpenConfirmDeleteInEdit(true);
+};
+
+const handleSearch = (event) => {
+  const value = event.target.value.toLowerCase(); 
+  setSearch(value);
+
+  if (value.trim() === "") {
+    setFilteredRows(rows); 
+    return;
+  }
+
+  const filtered = rows.filter((row) =>
+    Object.values(row).some(
+      (field) =>
+        field &&
+        field.toString().toLowerCase().includes(value)
+    )
+  );
+
+  setFilteredRows(filtered);
+};
+
+
+
+const handleOpenConfirmGroupDelete = () => {
+  if (selectedIds.length === 0) {
+    alert("❌ กรุณาเลือกผู้ป่วยก่อนทำการลบ!");
+    return;
+  }
+
+  const selectedPatients = rows.filter((row) => selectedIds.includes(row.patient_id));
+
+  setPatientsToDelete(selectedPatients); // อัปเดตรายชื่อผู้ป่วยที่จะแสดง
+  setOpenConfirmGroupDelete(true); // เปิด Dialog
+};
+const handleDeletePatientInEdit = async () => {
+  if (!selectedPatient) {
+    console.error("❌ ไม่พบข้อมูลผู้ป่วยที่ต้องการลบ");
+    return;
+  }
+
+  console.log("🟢 ผู้ป่วยที่กำลังลบ:", selectedPatient);
+
+  try {
+    const response = await fetch(`http://localhost:3001/delete-patient/${selectedPatient.patient_id}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`❌ Error deleting patient: ${response.status} - ${errorText}`);
+    }
+
+    console.log(`✅ ลบสำเร็จ: ${selectedPatient.name}`);
+
+    // ✅ อัปเดต UI หลังลบ
+    setRows((prevRows) => prevRows.filter((row) => row.patient_id !== selectedPatient.patient_id));
+    setOpenEditDialog(false);
+    setOpenConfirmDeleteInEdit(false);
+  } catch (error) {
+    console.error("❌ Fetch Error:", error.message);
+  }
+};
+
+
+const handleConfirmGroupDelete = async () => {
+  if (selectedIds.length === 0) return;
+
+  try {
+    const response = await fetch(`http://localhost:3001/delete-patients`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patientIds: selectedIds }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`❌ Error deleting patients: ${response.status} - ${errorText}`);
+    }
+
+    console.log("✅ ลบผู้ป่วยสำเร็จ:", selectedIds);
+
+    setRows((prevRows) => prevRows.filter((row) => !selectedIds.includes(row.patient_id)));
+    setSelectedIds([]); 
+    setOpenConfirmGroupDelete(false); 
+  } catch (error) {
+    console.error("❌ Fetch Error:", error.message);
+  }
+};
   const [selectedIds, setSelectedIds] = useState([]); 
 
 
@@ -47,8 +170,6 @@ const Patient = () => {
   const [rows, setRows] = useState([]);
   const [error, setError] = useState('');
   const [search, setSearch] = useState("");
-
-
 
   
   const [showTrashIcon, setShowTrashIcon] = useState(false);
@@ -70,57 +191,11 @@ const Patient = () => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedDiseases, setSelectedDiseases] = useState('');
   const [selectedProvinces, setSelectedProvinces] = useState('');
-  const [anchorElGroup, setAnchorElGroup] = useState(null);
-  const openGroupMenu = Boolean(anchorElGroup);
-
-  const handleGroupClick = (event) => {
-  if (selectedIds.length === 0) return; 
-  setAnchorElGroup(event.currentTarget);
-};
-
-const handleGroupClose = () => {
-  setAnchorElGroup(null);
-};
-
-const handleGroupDelete = async () => {
-  if (selectedIds.length === 0) {
-    alert("❌ กรุณาเลือกผู้ป่วยก่อนทำการลบ!"); // ❌ แจ้งเตือนถ้าไม่มีคนถูกเลือก
-    return;
-  }
-
-  console.log("📌 กำลังลบผู้ป่วยที่เลือก:", selectedIds);
-
-  try {
-    const response = await fetch(`http://localhost:3001/delete-patients`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientIds: selectedIds }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Error deleting patients: ${response.status} - ${errorText}`);
-    }
-
-    console.log("✅ ลบสำเร็จ");
-
-    setRows((prevRows) => prevRows.filter((row) => !selectedIds.includes(row.patient_id)));
-    setSelectedIds([]); 
-    setAnchorElGroup(null); 
-  } catch (error) {
-    console.error("❌ Fetch Error:", error.message);
-  }
-};
-const formatDateToYYYYMMDD = (date) => {
-  if (!date || !(date instanceof Date)) return null; // ตรวจสอบว่า date เป็น Date object ที่ถูกต้อง
-  return date.toISOString().split('T')[0]; // แปลงเป็น yyyy-mm-dd
-};
-  
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedViewPatient, setSelectedViewPatient] = useState(null);
   const [openConfirmDeleteDialog, setOpenConfirmDeleteDialog] = useState(false);
-  const [patientToDelete, setPatientToDelete] = useState(null);
+  const [patientToDelete] = useState(null);
   const fetchPatients = async () => {
     try {
       const response = await fetch('http://localhost:3001/all-patients');
@@ -151,16 +226,6 @@ const formatDateToYYYYMMDD = (date) => {
   useEffect(() => {
     setFilteredRows(rows); 
   }, [rows]);
-  
-
-
-  const convertToYYYYMMDD = (dateString) => {
-  if (!dateString) return null;
-  const [day, month, year] = dateString.split('/');
-  if (!day || !month || !year) return null;
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-};
-
   const confirmDeletePatient = async () => {
     if (!patientToDelete || patientToDelete.length === 0) return;
   
@@ -368,22 +433,24 @@ const formatDateToYYYYMMDD = (date) => {
     className="searchTextField"
   />
 <Button
-    variant="outlined"
-    onClick={handleClick} // ใช้ handleClick สำหรับ Filter
-    sx={{ 
-      textTransform: "none",
-      fontSize: "14px",
-      padding: "4px 10px",
-      minWidth: "90px",
-      borderColor: "#1976d2",
-      color: "#1976d2",
-      "&:hover": {
-        backgroundColor: "#e3f2fd",
-      }
-    }}
-  >
-    Filter ▼
-  </Button>
+  variant="outlined"
+  onClick={handleClick}
+  sx={{
+    textTransform: "none",
+    fontSize: "14px",
+    padding: "4px 10px",
+    minWidth: "90px",
+    color: "rgba(0, 0, 0, 0.87)", 
+    borderColor: "rgba(0, 0, 0, 0.23)",
+    "&:hover": {
+      backgroundColor: "#f5f5f5", 
+      borderColor: "rgba(0, 0, 0, 0.87)",
+    },
+  }}
+>
+  Filter ▼
+</Button>
+
 
 {/* เมนูสำหรับ Filter */}
 <Menu
@@ -446,7 +513,7 @@ const formatDateToYYYYMMDD = (date) => {
     <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
       <Typography sx={{ fontWeight: 'bold' }}>จังหวัด</Typography>
       <TextField 
-        placeholder="เช่น กรุงเทพ, เชียงใหม่"
+        placeholder="เช่น กรุงเทพ,เชียงใหม่"
         size="small"
         value={selectedProvinces}
         onChange={(e) => setSelectedProvinces(e.target.value)}
@@ -458,7 +525,6 @@ const formatDateToYYYYMMDD = (date) => {
   <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, px: 2 }}>
   <Button 
   variant="outlined" 
-  color="secondary"
   onClick={handleReset}
   sx={{ 
     padding: "6px 12px", 
@@ -470,10 +536,17 @@ const formatDateToYYYYMMDD = (date) => {
     display: "flex",
     alignItems: "center",
     gap: "8px", 
+    color: "red",                 
+    borderColor: "red",            
+    "&:hover": {
+      backgroundColor: "#ffebee",   
+      borderColor: "darkred",       
+    }
   }}
 >
-  รีเซ็ต🔄 
+  รีเซ็ต 🔄
 </Button>
+
 
 <Button 
   variant="outlined" 
@@ -493,32 +566,29 @@ const formatDateToYYYYMMDD = (date) => {
 >
   ค้นหา✅
 </Button>
-
-
 </Box>
-
 
 </Menu>
 
-
-{/* ปุ่ม "การจัดการหมู่" (สีแดง) */}
 <Button
-    variant="outlined"
-    onClick={handleManagementOpen} // ใช้ handleManagementOpen สำหรับการจัดการหมู่
-    sx={{ 
-      textTransform: "none",
-      fontSize: "14px", 
-      padding: "4px 10px", 
-      minWidth: "auto", 
-      borderColor: "red",
-      color: "red",
-      "&:hover": {
-        backgroundColor: "#ffebee",
-      }
-    }}
-  >
-    การจัดการหมู่▼
+  variant="outlined"
+  onClick={handleManagementOpen}
+  sx={{ 
+    textTransform: "none",
+    fontSize: "14px", 
+    padding: "4px 10px", 
+    minWidth: "auto", 
+    color: "rgba(0, 0, 0, 0.87)",           
+    borderColor: "rgba(0, 0, 0, 0.23)",     
+    "&:hover": {
+      backgroundColor: "#f5f5f5",           
+      borderColor: "rgba(0, 0, 0, 0.87)",   
+    }
+  }}
+>
+  การจัดการหมู่▼
 </Button>
+
 <Menu
   anchorEl={anchorElManagement} 
   open={openManagementMenu}
