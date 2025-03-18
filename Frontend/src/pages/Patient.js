@@ -7,6 +7,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import '../components/Table.css';
 import CryptoJS from "crypto-js";
+
+
 const formatDate = (dateString) => {
   if (!dateString) return "ไม่ได้นัดหมาย"; 
   const date = new Date(dateString);
@@ -19,9 +21,6 @@ const encryptData = (data) => {
   const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), 'secret_key').toString();
   return encrypted;
 };
-
-
-
 const decryptData = (data) => {
   const bytes = CryptoJS.AES.decrypt(data, 'secret_key');
   const decrypted = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
@@ -33,7 +32,9 @@ const Patient = () => {
 
   const [openConfirmGroupDelete, setOpenConfirmGroupDelete] = useState(false);
   const [openConfirmDeleteInEdit, setOpenConfirmDeleteInEdit] = useState(false);
-  const [patientsToDelete] = useState([]);
+  const [patientsToDelete, setPatientsToDelete] = useState([]);
+  const [rows, setRows] = useState([]); 
+
   const handleRowSelection = (newSelection) => {
     setSelectedIds(newSelection);
   };
@@ -48,8 +49,8 @@ const Patient = () => {
   };
   
 
-  const [selectedAgeType, setSelectedAgeType] = useState(''); // มากกว่า/น้อยกว่า
-  const [ageInput, setAgeInput] = useState(''); // ค่าอายุที่กรอก
+  const [selectedAgeType, setSelectedAgeType] = useState('');
+  const [ageInput, setAgeInput] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [filteredRows, setFilteredRows] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null); 
@@ -58,6 +59,7 @@ const Patient = () => {
   setAnchorEl(event.currentTarget);
 };
 
+  
 
 const [anchorElManagement, setAnchorElManagement] = useState(null);
 const openManagementMenu = Boolean(anchorElManagement);
@@ -162,31 +164,38 @@ const handleConfirmGroupDelete = async () => {
   }
 };
   const [selectedIds, setSelectedIds] = useState([]); 
-
-
-
-
-
-  const [rows, setRows] = useState([]);
-  const [error, setError] = useState('');
   const [search, setSearch] = useState("");
 
   
-  const [showTrashIcon, setShowTrashIcon] = useState(false);
-  const [isMultiDelete, setIsMultiDelete] = useState(false);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [newPatient, setNewPatient] = useState({
-    firstName: '',
-    lastName: '',
-    age: '',
-    lineId: '',
-    allergic: '',
-    sickness: '',
-    address: '',
-    email: '',
-    tel: '',
-    appointment_date: null, // ✅ Ensure appointment_date is set as null initially
-  });
+  const handleFilterConfirm = () => {
+    console.log("✅ ใช้ค่ากรอง...");
+  
+    let filtered = rows; 
+      if (selectedAgeType && ageInput) {
+      filtered = filtered.filter(row =>
+        selectedAgeType === "more" ? row.age > parseInt(ageInput) : row.age < parseInt(ageInput)
+      );
+    }
+      if (selectedStatus) {
+      filtered = filtered.filter(row => row.status === selectedStatus);
+    }
+  
+    if (selectedDiseases) {
+      const diseasesArray = selectedDiseases.split(",").map(d => d.trim());
+      filtered = filtered.filter(row =>
+        diseasesArray.some(disease => row.sickness.includes(disease))
+      );
+    }
+      if (selectedProvinces) {
+      const provincesArray = selectedProvinces.split(",").map(p => p.trim());
+      filtered = filtered.filter(row =>
+        provincesArray.some(province => row.address.includes(province))
+      );
+    }
+  
+    setFilteredRows(filtered);
+    setAnchorEl(null); 
+  };
   
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedDiseases, setSelectedDiseases] = useState('');
@@ -275,8 +284,8 @@ const handleConfirmGroupDelete = async () => {
   };
 
   const handleViewRow = (patient) => {
-    setSelectedViewPatient(patient);  // ตั้งค่า selectedViewPatient ให้เป็นผู้ป่วยที่เลือก
-    setOpenViewDialog(true);  // เปิด Dialog เพื่อแสดงข้อมูล
+    setSelectedViewPatient(patient);  
+    setOpenViewDialog(true); 
   };
   
   const handleUpdatePatient = async () => {
@@ -450,9 +459,6 @@ const handleConfirmGroupDelete = async () => {
 >
   Filter ▼
 </Button>
-
-
-{/* เมนูสำหรับ Filter */}
 <Menu
   anchorEl={anchorEl}
   open={open}
@@ -611,13 +617,6 @@ const handleConfirmGroupDelete = async () => {
 </Menu>
 
 </Box>
-
-
-
-
-
- 
-
 </div>
       <DataGrid
   rows={filteredRows} 
@@ -714,7 +713,7 @@ const handleConfirmGroupDelete = async () => {
           fullWidth 
           error={selectedPatient?.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(selectedPatient.email)}
           helperText={selectedPatient?.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(selectedPatient.email) ? "กรุณากรอกอีเมลที่ถูกต้อง" : ""}
-          sx={{ gridColumn: 'span 2' }} // ✅ ทำให้ขยายเต็ม 2 คอลัมน์
+          sx={{ gridColumn: 'span 2' }} 
 />
 
       </Box>
@@ -726,14 +725,14 @@ const handleConfirmGroupDelete = async () => {
     value={selectedPatient?.appointment_date ? new Date(selectedPatient.appointment_date) : null}
     onChange={(date) => {
       if (date) {
-        const formattedDate = date.toISOString().split('T')[0]; // แปลงเป็น "YYYY-MM-DD"
-        console.log("📅 วันนัดหมายที่เลือก:", formattedDate); // Debug
+        const formattedDate = date.toISOString().split('T')[0];
+        console.log("📅 วันนัดหมายที่เลือก:", formattedDate);
         setSelectedPatient((prev) => {
           const updated = {
             ...prev,
             appointment_date: formattedDate
           };
-          console.log("🔄 ข้อมูลผู้ป่วยหลังอัพเดท:", updated); // Debug
+          console.log("🔄 ข้อมูลผู้ป่วยหลังอัพเดท:", updated); 
           return updated;
         });
       } else {
@@ -743,7 +742,6 @@ const handleConfirmGroupDelete = async () => {
         }));
       }
     }}
-    // แทนที่ renderInput ด้วยการกำหนด slotProps สำหรับ MUI v6+
     slotProps={{ 
       textField: { 
         fullWidth: true,
@@ -782,7 +780,7 @@ const handleConfirmGroupDelete = async () => {
   </Box>
 </DialogActions>
 
-</Dialog> {/* ✅ ปิด Dialog อย่างถูกต้อง */}
+</Dialog> 
 
 <Dialog
   open={openConfirmGroupDelete}
@@ -890,7 +888,7 @@ const handleConfirmGroupDelete = async () => {
     value={selectedViewPatient?.allergic || ''} 
     fullWidth 
     multiline 
-    rows={3} // ✅ เพิ่มความสูง
+    rows={3}
     variant="outlined"
     slotProps={{ inputLabel: { shrink: true } }} 
   />
@@ -899,7 +897,7 @@ const handleConfirmGroupDelete = async () => {
     value={selectedViewPatient?.sickness || ''} 
     fullWidth 
     multiline 
-    rows={3} // ✅ เพิ่มความสูง
+    rows={3} 
     variant="outlined"
     slotProps={{ inputLabel: { shrink: true } }} 
   />
