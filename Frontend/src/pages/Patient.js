@@ -18,6 +18,7 @@ const formatDate = (dateString) => {
 
 
 
+
 const encryptData = (data) => {
   const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), 'secret_key').toString();
   return encrypted;
@@ -106,8 +107,8 @@ const handleOpenConfirmGroupDelete = () => {
 
   const selectedPatients = rows.filter((row) => selectedIds.includes(row.patient_id));
 
-  setPatientsToDelete(selectedPatients); // อัปเดตรายชื่อผู้ป่วยที่จะแสดง
-  setOpenConfirmGroupDelete(true); // เปิด Dialog
+  setPatientsToDelete(selectedPatients); 
+  setOpenConfirmGroupDelete(true);
 };
 const handleDeletePatientInEdit = async () => {
   if (!selectedPatient) {
@@ -129,7 +130,6 @@ const handleDeletePatientInEdit = async () => {
 
     console.log(`✅ ลบสำเร็จ: ${selectedPatient.name}`);
 
-    // ✅ อัปเดต UI หลังลบ
     setRows((prevRows) => prevRows.filter((row) => row.patient_id !== selectedPatient.patient_id));
     setOpenEditDialog(false);
     setOpenConfirmDeleteInEdit(false);
@@ -143,24 +143,32 @@ const handleConfirmGroupDelete = async () => {
   if (selectedIds.length === 0) return;
 
   try {
-    const response = await fetch(`http://localhost:3001/delete-patients`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientIds: selectedIds }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Error deleting patients: ${response.status} - ${errorText}`);
+    
+    console.log("🟢 กำลังลบผู้ป่วย:", selectedIds);
+    
+    const deletePromises = selectedIds.map(id => 
+      fetch(`http://localhost:3001/delete-patient/${id}`, {
+        method: "DELETE"
+      })
+    );
+    
+    const results = await Promise.allSettled(deletePromises);
+    
+    const errors = results.filter(r => r.status === 'rejected' || (r.value && !r.value.ok));
+    
+    if (errors.length > 0) {
+      console.error("❌ เกิดข้อผิดพลาดในการลบบางรายการ:", errors);
+      alert(`ลบสำเร็จ ${results.length - errors.length} รายการ, ล้มเหลว ${errors.length} รายการ`);
+    } else {
+      console.log("✅ ลบผู้ป่วยสำเร็จทั้งหมด:", selectedIds);
     }
 
-    console.log("✅ ลบผู้ป่วยสำเร็จ:", selectedIds);
-
-    setRows((prevRows) => prevRows.filter((row) => !selectedIds.includes(row.patient_id)));
-    setSelectedIds([]); 
-    setOpenConfirmGroupDelete(false); 
+    setRows(prevRows => prevRows.filter(row => !selectedIds.includes(row.patient_id)));
+    setSelectedIds([]);
+    setOpenConfirmGroupDelete(false);
   } catch (error) {
     console.error("❌ Fetch Error:", error.message);
+    alert("เกิดข้อผิดพลาดในการลบข้อมูล: " + error.message);
   }
 };
   const [selectedIds, setSelectedIds] = useState([]); 
@@ -708,9 +716,11 @@ export const PatientTableInternal = ({
   rows,
   filteredRows,
   columns,
+  onViewRow,
   search,
   handleSearch,
   anchorEl,
+  customStyle,
   open,
   handleClick,
   handleFilterConfirm,
@@ -727,10 +737,45 @@ export const PatientTableInternal = ({
   handleReset,
   handleRowSelection,
   selectedIds,
+  hideFooterPagination = false,
+  hideFooterSelectedRowCount = false,
   showSelection = true,
   groupManagementComponent = null,
-  height = "auto"
+  height = "auto",
+  ...props
 }) => {
+  const defaultColumns = [
+    { field: 'patient_id', headerName: 'ID', width: 30 },
+    {
+      field: 'view',
+      headerName: '',
+      width: 60,
+      renderCell: (params) => (
+        <IconButton color="primary" onClick={() => onViewRow && onViewRow(params.row)}
+>
+          <FontAwesomeIcon icon={faSearch} />
+        </IconButton>
+      ),
+      sortable: false,
+      filterable: false,
+    },
+    { field: 'name', headerName: 'ชื่อ-นามสกุล', width: 200 },
+    { field: 'age', headerName: 'อายุ', width: 60 },
+    { field: 'tel', headerName: 'เบอร์โทร', width: 100 },
+    { field: 'email', headerName: 'อีเมล', width: 150 },
+    { field: 'address', headerName: 'ที่อยู่', width: 250 },
+    { field: 'sickness', headerName: 'โรคประจำตัว', width: 150 },
+    { field: 'allergic', headerName: 'อาการแพ้', width: 150 },
+    { field: 'status', headerName: 'สถานะ', width: 80 },
+    {
+      field: 'appointment_date',
+      headerName: 'Appointment',
+      width: 100,
+      renderCell: (params) => formatDate(params.value),
+    },
+  ];
+
+  const appliedColumns = columns && columns.length > 0 ? columns : defaultColumns;
   return (
     <div>
   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -873,19 +918,24 @@ export const PatientTableInternal = ({
     </Box>
   </div>
 
-  {/* ✅ DataGrid อยู่ล่างสุด */}
   <DataGrid
     rows={filteredRows} 
-    columns={columns}
+    columns={appliedColumns}
     pageSize={5}
     rowsPerPageOptions={[5, 10, 15]}
     checkboxSelection={showSelection}
     getRowId={(row) => row.patient_id}
     onRowSelectionModelChange={handleRowSelection}
+    hideFooterPagination={hideFooterPagination}
+    hideFooterSelectedRowCount={hideFooterSelectedRowCount} 
     selectionModel={selectedIds}
     className="dataGridStyle"
-    autoHeight
-  />
+    sx={{
+      maxHeight: height,     
+      overflowY: "auto",
+      ...customStyle,  
+    }}
+    />
 </div>
   );
 };
