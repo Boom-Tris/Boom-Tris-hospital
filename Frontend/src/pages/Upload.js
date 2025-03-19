@@ -12,6 +12,7 @@ import {
   IconButton,
   FormControlLabel,
   Checkbox,
+  ListItemSecondaryAction,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -21,7 +22,7 @@ import { format, addDays, addWeeks, addMonths } from "date-fns";
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
 import { Snackbar, Alert } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-
+import { Delete, CheckCircle } from "@mui/icons-material";
 const Upload = () => {
   const [patientName, setPatientName] = useState("");
   const [patients, setPatients] = useState([]);
@@ -45,6 +46,7 @@ const Upload = () => {
   const [notificationDuration, setNotificationDuration] = useState("");
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState({});
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -76,7 +78,14 @@ const Upload = () => {
     includeMoreDetails,
     moreDetails,
   ]);
-
+  const removeFile = (fileName) => {
+    setFiles(files.filter((file) => file.name !== fileName));
+    setUploadStatus((prev) => {
+      const updatedStatus = { ...prev };
+      delete updatedStatus[fileName];
+      return updatedStatus;
+    });
+  };
   const resetForm = () => {
     setPatientName("");
     setPatients([]);
@@ -329,346 +338,342 @@ const Upload = () => {
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box>
-        <Typography variant="h3" gutterBottom>
-          Manage Appointments
-        </Typography>
-        <Box
-          sx={{
-            padding: 3,
-            backgroundColor: "white",
-            borderRadius: "10px",
-            boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
-          }}
-        >
-          <Grid container spacing={4}>
-            {/* ด้านซ้าย: แสดงข้อมูลผู้ป่วย */}
-            <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  padding: 2,
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                }}
-              >
+<LocalizationProvider dateAdapter={AdapterDateFns}>
+  <Box>
+    <Typography variant="h3" gutterBottom>
+      Manage Appointments
+    </Typography>
+    <Box
+      sx={{
+        padding: 3,
+        backgroundColor: "white",
+        borderRadius: "10px",
+        boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
+        minHeight: '100%',  // Ensure the background expands to fit content
+      }}
+    >
+      <Grid container justifyContent="center" alignItems="center" spacing={4} sx={{ height: '100%' }}>
+        {/* ด้านซ้าย: แสดงข้อมูลผู้ป่วย */}
+        <Grid item xs={12} md={8}>
+          <Box>
+            <Typography variant="h5" gutterBottom>
+              Search Results
+            </Typography>
+            <TextField
+              fullWidth
+              label="Search Patient by Name"
+              variant="outlined"
+              value={patientName}
+              onChange={(e) => setPatientName(e.target.value)}
+              margin="normal"
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ marginTop: 2 }}
+              onClick={handleSearchPatient}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : "Search"}
+            </Button>
+            <List sx={{ maxHeight: 700, overflowY: "auto", marginTop: 2 }}>
+              {patients.map((patient) => (
+                <ListItem key={patient.patient_id}>
+                  <ListItemText
+                    secondary={
+                      <>
+                        <Typography variant="body2">Name: {patient.name}</Typography>
+                        <Typography variant="body2">Age: {patient.age}</Typography>
+                        <Typography variant="body2">Email: {patient.email}</Typography>
+                        <Typography variant="body2">Tel: {patient.tel}</Typography>
+                        <Typography variant="body2">Address: {patient.address}</Typography>
+                        <Typography variant="body2">Sickness: {patient.sickness}</Typography>
+                        <Typography variant="body2">Allergic: {patient.allergic}</Typography>
+                        <Typography variant="body2">Status: {patient.status}</Typography>
+                        <Typography variant="body2">Appointment Send Date: {patient.appointment_senddate || "Not available"}</Typography>
+                        <Typography variant="body2">Appointment Date: {patient.appointment_date || "Not available"}</Typography>
+                        <Typography variant="body2">Reminder Time: {patient.reminder_time || "Not available"}</Typography>
+                        <Typography variant="body2">Appointment Details: {patient.appointment_details || "Not available"}</Typography>
+                        <Typography variant="body2">Notification Date: {patient.notification_date || "Not available"}</Typography>
+                        <Typography variant="body2">Notification Time: {patient.notification_time || "Not available"}</Typography>
+                        <Typography variant="body2">Notification Details: {patient.notification_details || "Not available"}</Typography>
+                      </>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+
+            {/* Other form fields */}
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
                 <Typography variant="h5" gutterBottom>
-                  Search Results
+                  Scheduled Settings
                 </Typography>
                 <TextField
+                  label="Notification Duration (e.g., 1 day, 2 weeks, 3 months)"
                   fullWidth
-                  label="Search Patient by Name"
                   variant="outlined"
-                  value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
+                  value={notificationDuration}
+                  onChange={handleNotificationDurationChange}
                   margin="normal"
                 />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  sx={{ marginTop: 2 }}
-                  onClick={handleSearchPatient}
-                  disabled={loading}
-                >
-                  {loading ? <CircularProgress size={24} /> : "Search"}
-                </Button>
-                <List sx={{ maxHeight: 700, overflowY: "auto", marginTop: 2 }}>
-                  {patients.map((patient) => (
-                    <ListItem key={patient.patient_id}>
-                      <ListItemText
-                        secondary={
-                          <>
-                            <Typography variant="body2">
-                              Name: {patient.name}
-                            </Typography>
-                            <Typography variant="body2">
-                              Age: {patient.age}
-                            </Typography>
-                            <Typography variant="body2">
-                              Email: {patient.email}
-                            </Typography>
-                            <Typography variant="body2">
-                              Tel: {patient.tel}
-                            </Typography>
-                            <Typography variant="body2">
-                              Address: {patient.address}
-                            </Typography>
-                            <Typography variant="body2">
-                              Sickness: {patient.sickness}
-                            </Typography>
-                            <Typography variant="body2">
-                              Allergic: {patient.allergic}
-                            </Typography>
-                            <Typography variant="body2">
-                              Status: {patient.status}
-                            </Typography>
-                            <Typography variant="body2">
-                              Appointment Send Date:{" "}
-                              {patient.appointment_senddate || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Appointment Date:{" "}
-                              {patient.appointment_date || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Reminder Time:{" "}
-                              {patient.reminder_time || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Appointment Details:{" "}
-                              {patient.appointment_details || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Notification Date:{" "}
-                              {patient.notification_date || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Notification Time:{" "}
-                              {patient.notification_time || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Notification Details:{" "}
-                              {patient.notification_details || "Not available"}
-                            </Typography>
-                          </>
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            </Grid>
+              </Grid>
 
-            {/* ด้านขวา: ส่วนตั้งค่า */}
-            <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  padding: 2,
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                }}
-              >
+              <Grid item xs={12}>
+                <TextField
+                  label="Notification Details"
+                  variant="outlined"
+                  value={notificationDetails}
+                  onChange={(e) => setNotificationDetails(e.target.value)}
+                  margin="normal"
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TimePicker
+                  value={notificationTime}
+                  onChange={(newTime) => setNotificationTime(newTime)}
+                  label="Notification Time"
+                  slots={{ openPickerIcon: FlightTakeoffIcon }}
+                  slotProps={{
+                    openPickerIcon: {
+                      color: "primary",
+                    },
+                  }}
+                  ampm={false}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                />
+              </Grid>
+
+              {/* Appointment Settings Title */}
+              <Grid item xs={12}>
+                <Typography variant="h5" gutterBottom>
+                  Appointment Settings
+                </Typography>
+              </Grid>
+
+              {/* Appointment Send Date */}
+              <Grid item xs={4}>
+                <DatePicker
+                  value={sendDate}
+                  onChange={(newDate) => setSendDate(newDate)}
+                  label="Appointment Send Date"
+                  slots={{ openPickerIcon: FlightTakeoffIcon }}
+                  slotProps={{
+                    openPickerIcon: {
+                      color: "primary",
+                    },
+                  }}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                />
+              </Grid>
+
+              {/* Appointment Date */}
+              <Grid item xs={4}>
+                <DatePicker
+                  value={appointmentDate}
+                  onChange={(newDate) => setAppointmentDate(newDate)}
+                  label="Appointment Date"
+                  slots={{ openPickerIcon: FlightTakeoffIcon }}
+                  slotProps={{
+                    openPickerIcon: {
+                      color: "primary",
+                    },
+                  }}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                />
+              </Grid>
+
+              {/* Reminder Time */}
+              <Grid item xs={4}>
+                <TimePicker
+                  value={reminderTime}
+                  onChange={(newTime) => setReminderTime(newTime)}
+                  label="Reminder Time"
+                  slots={{ openPickerIcon: FlightTakeoffIcon }}
+                  slotProps={{
+                    openPickerIcon: {
+                      color: "primary",
+                    },
+                  }}
+                  ampm={false}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                />
+              </Grid>
+
+              {/* Additional Details */}
+              <Grid item xs={12}>
+                <Typography variant="h5" gutterBottom>
+                  Additional Details
+                </Typography>
                 <Grid container spacing={2}>
-                  {/* Scheduled Settings */}
-                  <Grid item xs={12}>
-                    <Typography variant="h5" gutterBottom>
-                      Scheduled Settings
-                    </Typography>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={meetDoctor === true}
+                          onChange={() =>
+                            setMeetDoctor(meetDoctor === true ? null : true)
+                          }
+                        />
+                      }
+                      label="ต้องไปพบแพทย์"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={meetDoctor === false}
+                          onChange={() =>
+                            setMeetDoctor(meetDoctor === false ? null : false)
+                          }
+                        />
+                      }
+                      label="ไม่ต้องไปพบแพทย์"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={includeDocumentDetails}
+                          onChange={(e) =>
+                            setIncludeDocumentDetails(e.target.checked)
+                          }
+                        />
+                      }
+                      label="เอกสารที่ต้องเตรียม"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={includeDietDetails}
+                          onChange={(e) =>
+                            setIncludeDietDetails(e.target.checked)
+                          }
+                        />
+                      }
+                      label="งดอาหาร - งดยา"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={includeMoreDetails}
+                          onChange={(e) =>
+                            setIncludeMoreDetails(e.target.checked)
+                          }
+                        />
+                      }
+                      label="เพิ่มเติม"
+                    />
+                  </Grid>
+                </Grid>
+                <Box display="flex" flexDirection="column">
+                  {includeDocumentDetails && (
                     <TextField
-                      label="Notification Duration (e.g., 1 day, 2 weeks, 3 months)"
-                      fullWidth
+                      label="รายละเอียดเอกสาร"
                       variant="outlined"
-                      value={notificationDuration}
-                      onChange={handleNotificationDurationChange}
+                      value={documentDetails}
+                      onChange={(e) => setDocumentDetails(e.target.value)}
                       margin="normal"
+                      fullWidth
                     />
-                  </Grid>
-                  <Grid item xs={12}>
+                  )}
+                  {includeDietDetails && (
                     <TextField
-                      label="Notification Details"
+                      label="รายละเอียดงดอาหาร - งดยา"
                       variant="outlined"
-                      value={notificationDetails}
-                      onChange={(e) => setNotificationDetails(e.target.value)}
+                      value={dietDetails}
+                      onChange={(e) => setDietDetails(e.target.value)}
                       margin="normal"
                       fullWidth
                     />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TimePicker
-                      value={notificationTime}
-                      onChange={(newTime) => setNotificationTime(newTime)}
-                      label="Notification Time"
-                      slots={{ openPickerIcon: FlightTakeoffIcon }}
-                      slotProps={{
-                        openPickerIcon: {
-                          color: "primary",
-                        },
-                      }}
-                      ampm={false}
-                      renderInput={(params) => (
-                        <TextField {...params} fullWidth />
-                      )}
+                  )}
+                  {includeMoreDetails && (
+                    <TextField
+                      label="รายละเอียดเพิ่มเติม"
+                      variant="outlined"
+                      value={moreDetails}
+                      onChange={(e) => setMoreDetails(e.target.value)}
+                      margin="normal"
+                      fullWidth
                     />
-                  </Grid>
-
-                  {/* Appointment Settings */}
-                  <Grid item xs={12}>
-                    <Typography variant="h5" gutterBottom>
-                      Appointment Settings
-                    </Typography>
-                    <DatePicker
-                      value={sendDate}
-                      onChange={(newDate) => setSendDate(newDate)}
-                      label="Appointment Send Date"
-                      slots={{ openPickerIcon: FlightTakeoffIcon }}
-                      slotProps={{
-                        openPickerIcon: {
-                          color: "primary",
-                        },
-                      }}
-                      renderInput={(params) => (
-                        <TextField {...params} fullWidth />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <DatePicker
-                      value={appointmentDate}
-                      onChange={(newDate) => setAppointmentDate(newDate)}
-                      label="Appointment Date"
-                      slots={{ openPickerIcon: FlightTakeoffIcon }}
-                      slotProps={{
-                        openPickerIcon: {
-                          color: "primary",
-                        },
-                      }}
-                      renderInput={(params) => (
-                        <TextField {...params} fullWidth />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TimePicker
-                      value={reminderTime}
-                      onChange={(newTime) => setReminderTime(newTime)}
-                      label="Reminder Time"
-                      slots={{ openPickerIcon: FlightTakeoffIcon }}
-                      slotProps={{
-                        openPickerIcon: {
-                          color: "primary",
-                        },
-                      }}
-                      ampm={false}
-                      renderInput={(params) => (
-                        <TextField {...params} fullWidth />
-                      )}
-                    />
-                  </Grid>
-
-                  {/* Additional Details */}
-                  <Grid item xs={12}>
-                    <Typography variant="h5" gutterBottom>
-                      Additional Details
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={meetDoctor === true}
-                              onChange={() =>
-                                setMeetDoctor(meetDoctor === true ? null : true)
-                              }
-                            />
-                          }
-                          label="ต้องไปพบแพทย์"
-                        />
-                      </Grid>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={meetDoctor === false}
-                              onChange={() =>
-                                setMeetDoctor(
-                                  meetDoctor === false ? null : false
-                                )
-                              }
-                            />
-                          }
-                          label="ไม่ต้องไปพบแพทย์"
-                        />
-                      </Grid>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={includeDocumentDetails}
-                              onChange={(e) =>
-                                setIncludeDocumentDetails(e.target.checked)
-                              }
-                            />
-                          }
-                          label="เอกสารที่ต้องเตรียม"
-                        />
-                      </Grid>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={includeDietDetails}
-                              onChange={(e) =>
-                                setIncludeDietDetails(e.target.checked)
-                              }
-                            />
-                          }
-                          label="งดอาหาร - งดยา"
-                        />
-                      </Grid>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={includeMoreDetails}
-                              onChange={(e) =>
-                                setIncludeMoreDetails(e.target.checked)
-                              }
-                            />
-                          }
-                          label="เพิ่มเติม"
-                        />
-                      </Grid>
-                    </Grid>
-                    <Box display="flex" flexDirection="column">
-                      {includeDocumentDetails && (
-                        <TextField
-                          label="รายละเอียดเอกสาร"
-                          variant="outlined"
-                          value={documentDetails}
-                          onChange={(e) => setDocumentDetails(e.target.value)}
-                          margin="normal"
-                          fullWidth
-                        />
-                      )}
-                      {includeDietDetails && (
-                        <TextField
-                          label="รายละเอียดงดอาหาร - งดยา"
-                          variant="outlined"
-                          value={dietDetails}
-                          onChange={(e) => setDietDetails(e.target.value)}
-                          margin="normal"
-                          fullWidth
-                        />
-                      )}
-                      {includeMoreDetails && (
-                        <TextField
-                          label="รายละเอียดเพิ่มเติม"
-                          variant="outlined"
-                          value={moreDetails}
-                          onChange={(e) => setMoreDetails(e.target.value)}
-                          margin="normal"
-                          fullWidth
-                        />
-                      )}
-                    </Box>
-                  </Grid>
+                  )}
 
                   {/* Uploaded Files */}
                   <Grid item xs={12}>
-                    <Typography variant="h6" gutterBottom>
-                      Uploaded Files
-                    </Typography>
-                    <input
-                      type="file"
-                      multiple
-                      onChange={handleFileChange}
-                      style={{ marginTop: 10 }}
-                    />
-                    <List>{renderFilePreviews()}</List>
-                  </Grid>
+  <Typography variant="h6" gutterBottom>
+    Uploaded Files
+  </Typography>
 
+  <Box>
+    <Typography mb={1} sx={{ textAlign: "center" }}>
+      Link or drag and drop
+    </Typography>
+    <Button
+      variant="outlined"
+      component="label"
+      sx={{
+        border: "2px dashed #ddd",
+        padding: "20px",
+        width: "100%",
+        textTransform: "none",
+      }}
+    >
+      Select Files
+      <input
+        type="file"
+        hidden
+        multiple
+        onChange={handleFileChange}
+      />
+    </Button>
+  </Box>
+
+  <List sx={{ mt: 2, maxHeight: 200, overflowY: "auto" }}>
+    {files.map((file) => (
+      <ListItem
+        key={file.name}
+        sx={{
+          borderBottom: "1px solid #ddd",
+          paddingBottom: "10px",
+        }}
+      >
+        <ListItemText
+          primary={file.name}
+          secondary={`Size: ${(file.size / 1024).toFixed(2)} KB`}
+        />
+        <ListItemSecondaryAction>
+          {uploadStatus[file.name] === "loading" && (
+            <CircularProgress size={24} />
+          )}
+          {uploadStatus[file.name] === "complete" && (
+            <CheckCircle color="success" />
+          )}
+          {uploadStatus[file.name] === "failed" && (
+            <Typography color="error" variant="caption">
+              Upload failed
+            </Typography>
+          )}
+          <IconButton
+            edge="end"
+            aria-label="delete"
+            onClick={() => removeFile(file.name)}
+          >
+            <Delete />
+          </IconButton>
+        </ListItemSecondaryAction>
+      </ListItem>
+    ))}
+  </List>
+</Grid>
                   {/* Files */}
                   <Grid item xs={12}>
                     <Typography variant="h6" gutterBottom>
@@ -682,38 +687,42 @@ const Upload = () => {
                     <Button
                       variant="contained"
                       color="primary"
-                      onClick={() =>
-                        handleSetAppointment(patients[0]?.patient_id)
-                      }
+                      onClick={() => handleSetAppointment(patients[0]?.patient_id)}
                       disabled={uploading}
                       fullWidth
                     >
                       {uploading ? <CircularProgress size={24} /> : "SUBMIT"}
                     </Button>
                   </Grid>
-                </Grid>
-              </Box>
+                </Box>
+              </Grid>
             </Grid>
-          </Grid>
-        </Box>
-      </Box>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        action={
-          <Button
-            color="inherit"
-            size="small"
-            onClick={() => setSnackbar({ ...snackbar, open: false })}
-          >
-            CLOSE
-          </Button>
-        }
+          </Box>
+        </Grid>
+
+      </Grid>
+
+    </Box>
+  </Box>
+
+  <Snackbar
+    open={snackbar.open}
+    autoHideDuration={3000}
+    onClose={() => setSnackbar({ ...snackbar, open: false })}
+    action={
+      <Button
+        color="inherit"
+        size="small"
+        onClick={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
-    </LocalizationProvider>
+        CLOSE
+      </Button>
+    }
+  >
+    <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+  </Snackbar>
+</LocalizationProvider>
+
   );
 };
 
