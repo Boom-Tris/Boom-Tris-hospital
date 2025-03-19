@@ -90,6 +90,7 @@ const Home = () => {
       }
     };
     
+   
     
 
     const fetchPatients = async () => {
@@ -121,38 +122,51 @@ const Home = () => {
   };
 
   const data = {
-    labels: ["Series 1", "Series 2", "Series 3", "Series 4"],
+    labels: ["จำนวนผู้ป่วยทั้งหมด", "จำนวนหมอ", "ผู้ป่วยได้รับใบนัด", ], // Updated labels
     datasets: [
       {
-        data: [25, 30, 45],
-        backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#8E44AD"],
+        data: [patientCount, doctorCount, appointmentCount], // Use dynamic counts
+        backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", ], 
       },
     ],
   };
-
+  
   const chartOptions = {
     responsive: true,
-    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top', // You can also use 'bottom' or 'left' if you prefer
+        labels: {
+          boxWidth: 10,  // Customize box width for the legend
+          padding: 20,   // Add padding between the labels
+        },
+      },
+    },
+    maintainAspectRatio: false, // Optional: Allow chart to resize
   };
+  
 
   return (
     <Box>
       <Typography variant="h3" gutterBottom>
         HOME
+        <Box sx={{ borderBottom: "2px solid #000", marginTop: 3 }}></Box>
       </Typography>
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
         <Box className="custom-stat-card">
-          <Typography variant="h6">จำนวนผู้ป่วย</Typography>
+          <Typography variant="h6">จำนวนผู้ป่วยทั้งหมด</Typography>
           <div id="TextTyp">{patientCount}</div>
+        </Box>
+    
+        <Box className="custom-stat-card">
+          <Typography variant="h6">ผู้ป่วยได้รับใบนัด</Typography>
+          <div id="TextTyp">{appointmentCount}</div>
         </Box>
         <Box className="custom-stat-card">
           <Typography variant="h6">จำนวนหมอ</Typography>
           <div id="TextTyp">{doctorCount}</div>
-        </Box>
-        <Box className="custom-stat-card">
-          <Typography variant="h6">ใบนัดวันนี้</Typography>
-          <div id="TextTyp">{appointmentCount}</div>
         </Box>
       </Box>
 
@@ -217,9 +231,10 @@ const Home = () => {
             <Grid item xs={8}>
               <Card id="custom-pie-chart">
                 <Typography variant="h6">Statistics</Typography>
-                <div>
+                <div className="chart-container"> 
                   <Pie data={data} options={chartOptions} />
                 </div>
+                
               </Card>
             </Grid>
           </Grid>

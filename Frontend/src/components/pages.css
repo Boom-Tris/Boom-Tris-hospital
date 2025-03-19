@@ -63,6 +63,17 @@ body {
  
   }
 
+
+  .chart-container {
+    width: 240px; /* Set your preferred width for the chart */
+    height: 240px; /* Set your preferred height for the chart */
+    display: flex;
+    justify-content: center; /* Center the chart horizontally */
+    align-items: center;     /* Center the chart vertically */
+    margin: 0 auto;          /* Center the container horizontally within its parent */
+  }
+  
+
 /*Upload*/
 .custom-Upload {
     max-width: 90%;

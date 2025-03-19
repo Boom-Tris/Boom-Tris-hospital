@@ -30,7 +30,7 @@ const Profile = () => {
      
       }); // กำหนดค่าที่ดึงมาให้กับ profile
     } else {
-      console.error("❌ No user data found in localStorage.");
+    //  console.error("❌ No user data found in localStorage.");
     }
   }, []);
 

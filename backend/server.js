@@ -32,7 +32,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
-const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
+
 
 app.use(helmet());
 app.set("trust proxy", 1); // เปิดใช้งาน trust proxy
@@ -125,6 +125,7 @@ app.post("/login", async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
           // สร้าง JWT Token
+      
           const token = jwt.sign(
             { username: user.username, role: table },
             process.env.JWT_SECRET,
@@ -410,10 +411,10 @@ app.post("/upload-file", upload.array("files"), async (req, res) => {
     const uploadLogs = [];
 
     for (const file of files) {
-      const filePath = `bucket888/${Date.now()}_${file.originalname}`;
+      const filePath = `dataupload/${Date.now()}_${file.originalname}`;
 
       const { data, error } = await supabase.storage
-        .from("bucket888")
+        .from("dataupload")
         .upload(filePath, file.buffer, { contentType: file.mimetype });
 
       if (error) {
@@ -507,7 +508,7 @@ app.delete("/api/files/:fileId", async (req, res) => {
 
     // ลบไฟล์จาก Supabase Storage
     const { error: storageError } = await supabase.storage
-      .from("bucket888")
+      .from("dataupload")
       .remove([fileData.file_path]);
 
     if (storageError) {
@@ -782,11 +783,11 @@ async function sendNotification(patient, type) {
     if (uploadData?.length) {
       for (const file of uploadData) {
         let filePath = file.file_path;
-        if (!filePath.startsWith("bucket888/")) {
-          filePath = `bucket888/${filePath}`;
+        if (!filePath.startsWith("dataupload/")) {
+          filePath = `dataupload/${filePath}`;
         }
         const { data: publicUrlData } = supabase.storage
-          .from("bucket888")
+          .from("dataupload")
           .getPublicUrl(filePath);
 
         if (publicUrlData) {

@@ -9,10 +9,12 @@ import Home from './pages/Home';
 import Upload from './pages/Upload';
 
 import Profile from './pages/Profile';
-import OtpPage from './pages/OtpPage';
+
 import LoginPage from './pages/LoginPage';
 import Patient from './pages/Patient';
-import Add_personnel from './pages/Add_personnel';
+import AddPersonnel from './pages/Add_personnel';
+
+
 import '@fontsource/k2d';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
@@ -28,16 +30,15 @@ function App() {
       <ThemeProvider theme={theme}>
         <div className='app-background'>
           <Routes>
-            <Route path="/otp" element={<OtpPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/Add_personnel" element={<Add_personnel />} />
+                  <Route path="/login" element={<LoginPage />} />
+            <Route path="/Add Personnel" element={<AddPersonnel />} />
             <Route
               path="/*"
               element={
                 <Sidebar>
                   <Routes>
                     <Route path="/home" element={<Home />} />
-                    <Route path="/upload" element={<Upload />} />
+                    <Route path="/Manage Appointments" element={<Upload />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/patient" element={<Patient />} />
                    

@@ -7,7 +7,7 @@ import {  faCog, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import '../components/Table.css';
-import CryptoJS from "crypto-js";
+
 
 
 const formatDate = (dateString) => {
@@ -19,15 +19,6 @@ const formatDate = (dateString) => {
 
 
 
-const encryptData = (data) => {
-  const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), 'secret_key').toString();
-  return encrypted;
-};
-const decryptData = (data) => {
-  const bytes = CryptoJS.AES.decrypt(data, 'secret_key');
-  const decrypted = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-  return decrypted;
-};
 
 
 const Patient = () => {
@@ -62,16 +53,8 @@ const Patient = () => {
 };
 
 
-const [anchorElManagement, setAnchorElManagement] = useState(null);
-const openManagementMenu = Boolean(anchorElManagement);
 
-const handleManagementOpen = (event) => {
-  setAnchorElManagement(event.currentTarget);
-};
 
-const handleManagementClose = () => {
-  setAnchorElManagement(null);
-};
 
 const handleOpenConfirmDeleteInEdit = () => {
   setOpenConfirmDeleteInEdit(true);
@@ -112,11 +95,11 @@ const handleOpenConfirmGroupDelete = () => {
 };
 const handleDeletePatientInEdit = async () => {
   if (!selectedPatient) {
-    console.error("❌ ไม่พบข้อมูลผู้ป่วยที่ต้องการลบ");
+    //console.error("❌ ไม่พบข้อมูลผู้ป่วยที่ต้องการลบ");
     return;
   }
 
-  console.log("🟢 ผู้ป่วยที่กำลังลบ:", selectedPatient);
+  //console.log("🟢 ผู้ป่วยที่กำลังลบ:", selectedPatient);
 
   try {
     const response = await fetch(`http://localhost:3001/delete-patient/${selectedPatient.patient_id}`, {
@@ -128,13 +111,13 @@ const handleDeletePatientInEdit = async () => {
       throw new Error(`❌ Error deleting patient: ${response.status} - ${errorText}`);
     }
 
-    console.log(`✅ ลบสำเร็จ: ${selectedPatient.name}`);
+   // console.log(`✅ ลบสำเร็จ: ${selectedPatient.name}`);
 
     setRows((prevRows) => prevRows.filter((row) => row.patient_id !== selectedPatient.patient_id));
     setOpenEditDialog(false);
     setOpenConfirmDeleteInEdit(false);
   } catch (error) {
-    console.error("❌ Fetch Error:", error.message);
+    //console.error("❌ Fetch Error:", error.message);
   }
 };
 
@@ -144,7 +127,7 @@ const handleConfirmGroupDelete = async () => {
 
   try {
     
-    console.log("🟢 กำลังลบผู้ป่วย:", selectedIds);
+ //   console.log("🟢 กำลังลบผู้ป่วย:", selectedIds);
     
     const deletePromises = selectedIds.map(id => 
       fetch(`http://localhost:3001/delete-patient/${id}`, {
@@ -157,17 +140,17 @@ const handleConfirmGroupDelete = async () => {
     const errors = results.filter(r => r.status === 'rejected' || (r.value && !r.value.ok));
     
     if (errors.length > 0) {
-      console.error("❌ เกิดข้อผิดพลาดในการลบบางรายการ:", errors);
+     // console.error("❌ เกิดข้อผิดพลาดในการลบบางรายการ:", errors);
       alert(`ลบสำเร็จ ${results.length - errors.length} รายการ, ล้มเหลว ${errors.length} รายการ`);
     } else {
-      console.log("✅ ลบผู้ป่วยสำเร็จทั้งหมด:", selectedIds);
+     // console.log("✅ ลบผู้ป่วยสำเร็จทั้งหมด:", selectedIds);
     }
 
     setRows(prevRows => prevRows.filter(row => !selectedIds.includes(row.patient_id)));
     setSelectedIds([]);
     setOpenConfirmGroupDelete(false);
   } catch (error) {
-    console.error("❌ Fetch Error:", error.message);
+   // console.error("❌ Fetch Error:", error.message);
     alert("เกิดข้อผิดพลาดในการลบข้อมูล: " + error.message);
   }
 };
@@ -176,7 +159,7 @@ const handleConfirmGroupDelete = async () => {
 
   
   const handleFilterConfirm = () => {
-    console.log("✅ ใช้ค่ากรอง...");
+    
   
     let filtered = rows; 
       if (selectedAgeType && ageInput) {
@@ -221,8 +204,7 @@ const handleGroupMenuClose = () => {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedViewPatient, setSelectedViewPatient] = useState(null);
-  const [openConfirmDeleteDialog, setOpenConfirmDeleteDialog] = useState(false);
-  const [patientToDelete] = useState(null);
+
   const fetchPatients = async () => {
     try {
       const response = await fetch('http://localhost:3001/all-patients');
@@ -236,10 +218,10 @@ const handleGroupMenuClose = () => {
         }));
         setRows(updatedRows);
       } else {
-        console.error('Error fetching patients:', data);
+      //  console.error('Error fetching patients:', data);
       }
     } catch (error) {
-      console.error('Server error:', error);
+    //  console.error('Server error:', error);
     }
   };
   useEffect(() => {
@@ -253,45 +235,7 @@ const handleGroupMenuClose = () => {
   useEffect(() => {
     setFilteredRows(rows); 
   }, [rows]);
-  const confirmDeletePatient = async () => {
-    if (!patientToDelete || patientToDelete.length === 0) return;
   
-    const patientIds = patientToDelete.map(p => p.patient_id);
-    console.log("🟢 กำลังส่งค่าไปลบ:", JSON.stringify({ patientIds }));
-  
-    try {
-      let response;
-  
-      if (patientIds.length === 1) {
-        // กรณีลบเดี่ยว
-        response = await fetch(`http://localhost:3001/delete-patient/${patientIds[0]}`, {
-          method: 'DELETE',
-        });
-      } else {
-        // กรณีลบหลายรายการ
-        response = await fetch(`http://localhost:3001/delete-patients`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patientIds }),
-        });
-      }
-  
-      console.log("Response Status: ", response.status); // ดูสถานะการตอบกลับจากเซิร์ฟเวอร์
-  
-      if (!response.ok) {
-        const errorMessage = await response.text();
-        console.error("❌ Server error:", errorMessage);
-        return;
-      }
-  
-      console.log("✅ ลบสำเร็จ");
-      setRows((prevRows) => prevRows.filter(row => !patientIds.includes(row.patient_id))); // ✅ อัปเดต UI
-      setSelectedIds([]); // ✅ เคลียร์ค่า ID ที่เลือก
-      setOpenConfirmDeleteDialog(false); // ปิด Dialog
-    } catch (error) {
-      console.error("❌ Fetch Error:", error.message);
-    }
-  };
   
 
 
@@ -322,8 +266,8 @@ const handleGroupMenuClose = () => {
       status: selectedPatient.status,
     };
     
-    console.log("📦 Payload ที่ส่งไป:", payload);
-    console.log("📆 appointment_date ที่ส่ง:", payload.appointment_date);
+  //  console.log("📦 Payload ที่ส่งไป:", payload);
+    //console.log("📆 appointment_date ที่ส่ง:", payload.appointment_date);
   
     try {
       const response = await fetch("http://localhost:3001/update-patient", {
@@ -337,7 +281,7 @@ const handleGroupMenuClose = () => {
         throw new Error(`❌ Error updating patient: ${response.status} - ${errorText}`);
       }
   
-      console.log("✅ อัปเดตสำเร็จ");
+    
   
       setRows((prevRows) =>
         prevRows.map((row) =>
@@ -349,7 +293,7 @@ const handleGroupMenuClose = () => {
   
       setOpenEditDialog(false);
     } catch (error) {
-      console.error("❌ Fetch Error:", error.message);
+    //  console.error("❌ Fetch Error:", error.message);
       alert("เกิดข้อผิดพลาดในการอัปเดตข้อมูลผู้ป่วย");
     }
   };
@@ -406,6 +350,7 @@ const handleGroupMenuClose = () => {
           minWidth: "120px",
           whiteSpace: 'nowrap',
           color: "rgba(0, 0, 0, 0.87)", 
+          backgroundColor: "#ffffff",
           borderColor: "rgba(0, 0, 0, 0.23)",
           "&:hover": {
             backgroundColor: "#f5f5f5", 
@@ -446,6 +391,7 @@ const handleGroupMenuClose = () => {
     <>
            <Typography variant="h3" gutterBottom>
            PATIENT
+           <Box sx={{ borderBottom: "2px solid #000", marginTop: 3 }}></Box>
             </Typography>
       <PatientTableInternal
         rows={rows}
@@ -570,13 +516,13 @@ const handleGroupMenuClose = () => {
     onChange={(date) => {
       if (date) {
         const formattedDate = date.toISOString().split('T')[0]; // แปลงเป็น "YYYY-MM-DD"
-        console.log("📅 วันนัดหมายที่เลือก:", formattedDate); // Debug
+       // console.log("📅 วันนัดหมายที่เลือก:", formattedDate); // Debug
         setSelectedPatient((prev) => {
           const updated = {
             ...prev,
             appointment_date: formattedDate
           };
-          console.log("🔄 ข้อมูลผู้ป่วยหลังอัพเดท:", updated); // Debug
+      //    console.log("🔄 ข้อมูลผู้ป่วยหลังอัพเดท:", updated); // Debug
           return updated;
         });
       } else {
@@ -801,6 +747,7 @@ export const PatientTableInternal = ({
           padding: "4px 10px",
           minWidth: "90px",
           color: "rgba(0, 0, 0, 0.87)", 
+          backgroundColor: "#ffffff", 
           borderColor: "rgba(0, 0, 0, 0.23)",
           "&:hover": {
             backgroundColor: "#f5f5f5", 

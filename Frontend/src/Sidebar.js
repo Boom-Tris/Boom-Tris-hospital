@@ -14,10 +14,11 @@ import {
   faHome,
   faUpload,
   faCircleUser,
-  faBell,
+  faSignOutAlt,
   faStethoscope,
-  faColonSign,
-  faSignOutAlt, // Icon สำหรับออกจากระบบ
+
+  faPlus,
+
 } from '@fortawesome/free-solid-svg-icons';
 
 const Sidebar = ({ children }) => {
@@ -34,7 +35,7 @@ const Sidebar = ({ children }) => {
     } else {
       const userData = JSON.parse(user);
       setIsAuthenticated(true); // ถ้า login แล้ว set เป็น true
-      setIsAdmin(userData.role === 'admin'); // ตรวจสอบว่าเป็น admin หรือไม่
+      setIsAdmin(userData.role === 'admins'); // ตรวจสอบว่าเป็น admin หรือไม่
     }
   }, [navigate]);
 
@@ -49,17 +50,16 @@ const Sidebar = ({ children }) => {
     setIsAuthenticated(false); // อัพเดตสถานะการ login
     navigate('/login'); // เปลี่ยนเส้นทางไปหน้า login
   };
-
   const menuItems = [
     { text: 'HOME', icon: faHome },
-    { text: 'UPLOAD', icon: faUpload },
-    { text: 'PROFILE', icon: faCircleUser },
+    { text: 'Manage Appointments', icon: faUpload },
+    ...(isAdmin ? [] : [{ text: 'PROFILE', icon: faCircleUser }]), // Show PROFILE only for non-admin users
     { text: 'PATIENT', icon: faStethoscope },
- 
-    // แสดงเมนู Add_personnel เฉพาะถ้าเป็น admin
-    ...(isAdmin ? [{ text: 'Add_personnel', icon: faColonSign }] : []),
-    { text: 'LOG OUT', icon: faSignOutAlt }, // เมนูออกจากระบบ
+    // Show Add_personnel only for admin
+    ...(isAdmin ? [{ text: 'Add Personnel', icon: faPlus }] : []),
+    { text: 'LOG OUT', icon: faSignOutAlt }, // Show LOG OUT for all users
   ];
+  
 
   if (!isAuthenticated) {
     return null; // ถ้าไม่ได้ login จะไม่แสดง Sidebar และเนื้อหา

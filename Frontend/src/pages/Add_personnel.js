@@ -60,7 +60,7 @@ const Add_personnel = () => {
 
       // ตรวจสอบผลลัพธ์ที่ได้รับจาก API
       const result = await response.json();
-      console.log(result); // ล็อกผลลัพธ์เพื่อดูข้อมูลที่ได้รับจาก API
+      //console.log(result); // ล็อกผลลัพธ์เพื่อดูข้อมูลที่ได้รับจาก API
 
       if (response.ok) {
         setSnackbarMessage("✅ Personnel added successfully");
