@@ -1,19 +1,21 @@
 import React, { useState, useEffect} from 'react';
-import { Typography, TextField, IconButton, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent , MenuItem ,Menu ,RadioGroup , FormControlLabel , Radio  } from '@mui/material';
+import { Typography, TextField, IconButton, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent , MenuItem ,Menu ,RadioGroup , FormControlLabel , Radio   } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import DeleteIcon from '@mui/icons-material/Delete'; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {  faCog, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import '../components/Table.css';
 import CryptoJS from "crypto-js";
-import validator from 'validator';
+
 
 const formatDate = (dateString) => {
   if (!dateString) return "ไม่ได้นัดหมาย"; 
   const date = new Date(dateString);
   return date.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
+
 
 
 
@@ -52,7 +54,6 @@ const Patient = () => {
   const [selectedAgeType, setSelectedAgeType] = useState(''); // มากกว่า/น้อยกว่า
   const [ageInput, setAgeInput] = useState(''); // ค่าอายุที่กรอก
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [anchorElFilter, setAnchorElFilter] = useState(null);
   const [filteredRows, setFilteredRows] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null); 
   const open = Boolean(anchorEl);
@@ -106,8 +107,8 @@ const handleOpenConfirmGroupDelete = () => {
 
   const selectedPatients = rows.filter((row) => selectedIds.includes(row.patient_id));
 
-  setPatientsToDelete(selectedPatients); // อัปเดตรายชื่อผู้ป่วยที่จะแสดง
-  setOpenConfirmGroupDelete(true); // เปิด Dialog
+  setPatientsToDelete(selectedPatients); 
+  setOpenConfirmGroupDelete(true);
 };
 const handleDeletePatientInEdit = async () => {
   if (!selectedPatient) {
@@ -129,7 +130,6 @@ const handleDeletePatientInEdit = async () => {
 
     console.log(`✅ ลบสำเร็จ: ${selectedPatient.name}`);
 
-    // ✅ อัปเดต UI หลังลบ
     setRows((prevRows) => prevRows.filter((row) => row.patient_id !== selectedPatient.patient_id));
     setOpenEditDialog(false);
     setOpenConfirmDeleteInEdit(false);
@@ -143,65 +143,37 @@ const handleConfirmGroupDelete = async () => {
   if (selectedIds.length === 0) return;
 
   try {
-    const response = await fetch(`http://localhost:3001/delete-patients`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientIds: selectedIds }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Error deleting patients: ${response.status} - ${errorText}`);
+    
+    console.log("🟢 กำลังลบผู้ป่วย:", selectedIds);
+    
+    const deletePromises = selectedIds.map(id => 
+      fetch(`http://localhost:3001/delete-patient/${id}`, {
+        method: "DELETE"
+      })
+    );
+    
+    const results = await Promise.allSettled(deletePromises);
+    
+    const errors = results.filter(r => r.status === 'rejected' || (r.value && !r.value.ok));
+    
+    if (errors.length > 0) {
+      console.error("❌ เกิดข้อผิดพลาดในการลบบางรายการ:", errors);
+      alert(`ลบสำเร็จ ${results.length - errors.length} รายการ, ล้มเหลว ${errors.length} รายการ`);
+    } else {
+      console.log("✅ ลบผู้ป่วยสำเร็จทั้งหมด:", selectedIds);
     }
 
-    console.log("✅ ลบผู้ป่วยสำเร็จ:", selectedIds);
-
-    setRows((prevRows) => prevRows.filter((row) => !selectedIds.includes(row.patient_id)));
-    setSelectedIds([]); 
-    setOpenConfirmGroupDelete(false); 
-  } catch (error) {
-    console.error("❌ Fetch Error:", error.message);
-  }
-};
-
-
-
-
-const handleDeleteSelectedPatients = async () => {
-  if (selectedIds.length === 0) {
-    alert("❌ กรุณาเลือกผู้ป่วยก่อนทำการลบ!");
-    return;
-  }
-
-  console.log("📌 กำลังลบผู้ป่วยที่เลือก:", selectedIds);
-
-  try {
-    const response = await fetch(`http://localhost:3001/delete-patients`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientIds: selectedIds }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Error deleting patients: ${response.status} - ${errorText}`);
-    }
-
-    console.log("✅ ลบสำเร็จ");
-
-    // ✅ อัปเดต UI หลังลบ
-    setRows((prevRows) => prevRows.filter((row) => !selectedIds.includes(row.patient_id)));
+    setRows(prevRows => prevRows.filter(row => !selectedIds.includes(row.patient_id)));
     setSelectedIds([]);
-    setAnchorElManagement(null);
+    setOpenConfirmGroupDelete(false);
   } catch (error) {
     console.error("❌ Fetch Error:", error.message);
+    alert("เกิดข้อผิดพลาดในการลบข้อมูล: " + error.message);
   }
 };
   const [selectedIds, setSelectedIds] = useState([]); 
   const [search, setSearch] = useState("");
-  const handleFilterClose = () => {
-    setAnchorElFilter(null);
-  };
+
   
   const handleFilterConfirm = () => {
     console.log("✅ ใช้ค่ากรอง...");
@@ -232,61 +204,25 @@ const handleDeleteSelectedPatients = async () => {
     setFilteredRows(filtered);
     setAnchorEl(null); 
   };
-  
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [selectedDiseases, setSelectedDiseases] = useState('');
-  const [selectedProvinces, setSelectedProvinces] = useState('');
   const [anchorElGroup, setAnchorElGroup] = useState(null);
   const openGroupMenu = Boolean(anchorElGroup);
 
-  const handleGroupClick = (event) => {
-  if (selectedIds.length === 0) return; 
+const handleGroupMenuOpen = (event) => {
   setAnchorElGroup(event.currentTarget);
 };
 
-const handleGroupClose = () => {
+const handleGroupMenuClose = () => {
   setAnchorElGroup(null);
 };
 
-const handleGroupDelete = async () => {
-  if (selectedIds.length === 0) {
-    alert("❌ กรุณาเลือกผู้ป่วยก่อนทำการลบ!"); // ❌ แจ้งเตือนถ้าไม่มีคนถูกเลือก
-    return;
-  }
-
-  console.log("📌 กำลังลบผู้ป่วยที่เลือก:", selectedIds);
-
-  try {
-    const response = await fetch(`http://localhost:3001/delete-patients`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientIds: selectedIds }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Error deleting patients: ${response.status} - ${errorText}`);
-    }
-
-    console.log("✅ ลบสำเร็จ");
-
-    setRows((prevRows) => prevRows.filter((row) => !selectedIds.includes(row.patient_id)));
-    setSelectedIds([]); 
-    setAnchorElGroup(null); 
-  } catch (error) {
-    console.error("❌ Fetch Error:", error.message);
-  }
-};
-const formatDateToYYYYMMDD = (date) => {
-  if (!date || !(date instanceof Date)) return null; // ตรวจสอบว่า date เป็น Date object ที่ถูกต้อง
-  return date.toISOString().split('T')[0]; // แปลงเป็น yyyy-mm-dd
-};
-  
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [selectedDiseases, setSelectedDiseases] = useState('');
+  const [selectedProvinces, setSelectedProvinces] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedViewPatient, setSelectedViewPatient] = useState(null);
   const [openConfirmDeleteDialog, setOpenConfirmDeleteDialog] = useState(false);
-  const [patientToDelete, setPatientToDelete] = useState(null);
+  const [patientToDelete] = useState(null);
   const fetchPatients = async () => {
     try {
       const response = await fetch('http://localhost:3001/all-patients');
@@ -317,16 +253,6 @@ const formatDateToYYYYMMDD = (date) => {
   useEffect(() => {
     setFilteredRows(rows); 
   }, [rows]);
-  
-
-
-  const convertToYYYYMMDD = (dateString) => {
-  if (!dateString) return null;
-  const [day, month, year] = dateString.split('/');
-  if (!day || !month || !year) return null;
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-};
-
   const confirmDeletePatient = async () => {
     if (!patientToDelete || patientToDelete.length === 0) return;
   
@@ -392,7 +318,8 @@ const formatDateToYYYYMMDD = (date) => {
       allergic: selectedPatient.allergic,
       sickness: selectedPatient.sickness,
       address: selectedPatient.address,
-      appointment_date: selectedPatient.appointment_date || null, // ✅ ใช้ค่าเดิมที่แปลงจาก DatePicker
+      appointment_date: selectedPatient.appointment_date || null, 
+      status: selectedPatient.status,
     };
     
     console.log("📦 Payload ที่ส่งไป:", payload);
@@ -462,272 +389,88 @@ const formatDateToYYYYMMDD = (date) => {
       <IconButton color="primary" onClick={() => handleEditRow(params.row)}>
         <FontAwesomeIcon icon={faCog} />
       </IconButton>
-    <Dialog
-  open={openConfirmDeleteDialog}
-  onClose={() => setOpenConfirmDeleteDialog(false)}
-  aria-labelledby="confirm-delete-dialog-title"
-  maxWidth="sm" 
-  fullWidth 
-  disableBackdropClick 
-  disableEscapeKeyDown 
-  PaperProps={{
-    sx: {
-      backgroundColor: 'white', 
-      boxShadow: 'none', 
-      borderRadius: '12px', 
-      padding: '20px', 
-    },
-  }}
->
-  <DialogTitle id="confirm-delete-dialog-title" sx={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
-    ยืนยันการลบ
-  </DialogTitle>
-  <DialogContent>
-    <Typography variant="body1" sx={{ fontSize: '1.1rem', marginBottom: '10px' }}>
-      คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลผู้ป่วยเหล่านี้?
-    </Typography>
-    <ul>
-      {patientToDelete && patientToDelete.map((patient) => (
-        <li key={patient.patient_id} style={{ fontSize: '1rem', marginBottom: '5px' }}>
-          {patient.name}
-        </li>
-      ))}
-    </ul>
-  </DialogContent>
-  <DialogActions>
-    <Button 
-      onClick={() => setOpenConfirmDeleteDialog(false)} 
-      color="primary"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ยกเลิก
-    </Button>
-    <Button 
-      onClick={confirmDeletePatient} 
-      color="error"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ลบ
-    </Button>
-  </DialogActions>
-</Dialog>
-
-
 
         </>
       ),
     },
   ];
+  const groupManagementComponent = (
+    <>
+      <Button
+        variant="outlined"
+        onClick={handleGroupMenuOpen}
+        sx={{
+          textTransform: "none",
+          fontSize: "14px",
+          padding: "4.5px 14px",
+          minWidth: "120px",
+          whiteSpace: 'nowrap',
+          color: "rgba(0, 0, 0, 0.87)", 
+          borderColor: "rgba(0, 0, 0, 0.23)",
+          "&:hover": {
+            backgroundColor: "#f5f5f5", 
+            borderColor: "rgba(0, 0, 0, 0.87)",
+          },marginLeft : "-5px"
+        }}
+      >
+        การจัดการหมู่▼
+      </Button>
+  
+      <Menu
+        anchorEl={anchorElGroup}
+        open={openGroupMenu}
+        onClose={handleGroupMenuClose}
+      >
+        <MenuItem
+  onClick={() => {
+    handleGroupMenuClose();
+    handleOpenConfirmGroupDelete(); 
+  }}
+  sx={{
+    color: "red", 
+    "&:hover": {
+      backgroundColor: "#ffebee", 
+      },
+    }}
+        >
+    <DeleteIcon sx={{ fontSize: "1rem", marginRight: "8px" }} /> 
+  ลบผู้ป่วยแบบหมู่
+</MenuItem>
+      </Menu>
+    </>
+  );
+  
 
   return (
-    <div>
-      <Typography variant="h3" gutterBottom>Patient</Typography>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-  <Box sx={{ marginRight: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
-  <TextField 
-    label="Search" 
-    variant="outlined" 
-    size="small" 
-    value={search} 
-    onChange={handleSearch}
-    className="searchTextField"
-  />
-<Button
-    variant="outlined"
-    onClick={handleClick} // ใช้ handleClick สำหรับ Filter
-    sx={{ 
-      textTransform: "none",
-      fontSize: "14px",
-      padding: "4px 10px",
-      minWidth: "90px",
-      borderColor: "#1976d2",
-      color: "#1976d2",
-      "&:hover": {
-        backgroundColor: "#e3f2fd",
-      }
-    }}
-  >
-    Filter ▼
-  </Button>
-
-{/* เมนูสำหรับ Filter */}
-<Menu
-  anchorEl={anchorEl}
-  open={open}
-  onClose={handleFilterConfirm}  
-  sx={{ padding: '8px' }}
->
-  <MenuItem>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
-      <Typography sx={{ fontWeight: 'bold' }}>อายุ</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <RadioGroup
-          row
-          value={selectedAgeType}
-          onChange={(e) => setSelectedAgeType(e.target.value)}
-        >
-          <FormControlLabel value="more" control={<Radio />} label="มากกว่า" />
-          <FormControlLabel value="less" control={<Radio />} label="น้อยกว่า" />
-        </RadioGroup>
-        <TextField 
-          type="number"
-          size="small"
-          value={ageInput}
-          onChange={(e) => setAgeInput(e.target.value)}
-          sx={{ width: '80px' }}
-        />
-      </Box>
-    </Box>
-  </MenuItem>
-
-  <MenuItem>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
-      <Typography sx={{ fontWeight: 'bold' }}>สถานะ</Typography>
-      <RadioGroup
-        row
-        value={selectedStatus}
-        onChange={(e) => setSelectedStatus(e.target.value)}
-      >
-        <FormControlLabel value="Active" control={<Radio />} label="Active" />
-        <FormControlLabel value="Inactive" control={<Radio />} label="Inactive" />
-      </RadioGroup>
-    </Box>
-  </MenuItem>
-
-  <MenuItem>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
-      <Typography sx={{ fontWeight: 'bold' }}>กรองโรค</Typography>
-      <TextField 
-        placeholder="เช่น หวัด,เบาหวาน"
-        size="small"
-        value={selectedDiseases}
-        onChange={(e) => setSelectedDiseases(e.target.value)}
-        sx={{ width: '100%' }}
+    <>
+      <PatientTableInternal
+        rows={rows}
+        filteredRows={filteredRows}
+        columns={columns}
+        search={search}
+        handleSearch={handleSearch}
+        anchorEl={anchorEl}
+        open={open}
+        handleClick={handleClick}
+        handleFilterConfirm={handleFilterConfirm}
+        selectedAgeType={selectedAgeType}
+        ageInput={ageInput}
+        selectedStatus={selectedStatus}
+        selectedDiseases={selectedDiseases}
+        selectedProvinces={selectedProvinces}
+        setSelectedAgeType={setSelectedAgeType}
+        setAgeInput={setAgeInput}
+        setSelectedStatus={setSelectedStatus}
+        setSelectedDiseases={setSelectedDiseases}
+        setSelectedProvinces={setSelectedProvinces}
+        handleReset={handleReset}
+        handleRowSelection={handleRowSelection}
+        selectedIds={selectedIds}
+        showSelection={true}
+        groupManagementComponent={groupManagementComponent}
       />
-    </Box>
-  </MenuItem>
-
-  <MenuItem>
-    <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
-      <Typography sx={{ fontWeight: 'bold' }}>จังหวัด</Typography>
-      <TextField 
-        placeholder="เช่น กรุงเทพ, เชียงใหม่"
-        size="small"
-        value={selectedProvinces}
-        onChange={(e) => setSelectedProvinces(e.target.value)}
-        sx={{ width: '100%' }}
-      />
-    </Box>
-  </MenuItem>
-
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, px: 2 }}>
-  <Button 
-  variant="outlined" 
-  color="secondary"
-  onClick={handleReset}
-  sx={{ 
-    padding: "6px 12px", 
-    minWidth: "auto",
-    borderRadius: "5px",
-    ml: 0.5,
-    fontSize: "1rem", 
-    fontWeight: "bold", 
-    display: "flex",
-    alignItems: "center",
-    gap: "8px", 
-  }}
->
-  รีเซ็ต🔄 
-</Button>
-
-<Button 
-  variant="outlined" 
-  onClick={handleFilterConfirm} 
-  color="success"
-  sx={{ 
-    padding: "6px 12px", 
-    minWidth: "auto",
-    borderRadius: "5px",
-    ml: 0.5,
-    fontSize: "1rem", 
-    fontWeight: "bold", 
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  }}
->
-  ค้นหา✅
-</Button>
-
-
-</Box>
-
-
-</Menu>
-
-
-{/* ปุ่ม "การจัดการหมู่" (สีแดง) */}
-<Button
-    variant="outlined"
-    onClick={handleManagementOpen} // ใช้ handleManagementOpen สำหรับการจัดการหมู่
-    sx={{ 
-      textTransform: "none",
-      fontSize: "14px", 
-      padding: "4px 10px", 
-      minWidth: "auto", 
-      borderColor: "red",
-      color: "red",
-      "&:hover": {
-        backgroundColor: "#ffebee",
-      }
-    }}
-  >
-    การจัดการหมู่▼
-</Button>
-<Menu
-  anchorEl={anchorElManagement} 
-  open={openManagementMenu}
-  onClose={handleManagementClose}
-  sx={{ padding: '8px' }}
->
-<MenuItem 
-  onClick={handleOpenConfirmGroupDelete}
-  sx={{ padding: '4px 8px', minWidth: 'auto' }} 
->
-<Typography 
-  sx={{ fontWeight: 'normal', color: 'red', fontSize: '0.875rem' }} 
->
-  ลบผู้ป่วยที่เลือก🗑️
-</Typography>
-
-</MenuItem>
-
-
-</Menu>
-
-</Box>
-
-
-
-
-
- 
-
-</div>
-      <DataGrid
-  rows={filteredRows} 
-  columns={columns}
-  pageSize={5}
-  rowsPerPageOptions={[5, 10, 15]}
-  checkboxSelection
-  getRowId={(row) => row.patient_id}
-  onRowSelectionModelChange={handleRowSelection}
-  selectionModel={selectedIds}
-  className="dataGridStyle"
-/>
-
-<Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
+  
+  <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
   <DialogTitle>แก้ไขข้อมูลผู้ป่วย</DialogTitle>
   <DialogContent>
     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
@@ -799,7 +542,7 @@ const formatDateToYYYYMMDD = (date) => {
           fullWidth
         >
           <MenuItem value="Active">Active ✅</MenuItem>
-          <MenuItem value="Inactive">Inactive ❌</MenuItem>
+          <MenuItem value="InActive">InActive ❌</MenuItem>
         </TextField>
 
         <TextField 
@@ -839,7 +582,6 @@ const formatDateToYYYYMMDD = (date) => {
         }));
       }
     }}
-    // แทนที่ renderInput ด้วยการกำหนด slotProps สำหรับ MUI v6+
     slotProps={{ 
       textField: { 
         fullWidth: true,
@@ -878,170 +620,322 @@ const formatDateToYYYYMMDD = (date) => {
   </Box>
 </DialogActions>
 
-</Dialog> {/* ✅ ปิด Dialog อย่างถูกต้อง */}
+</Dialog> 
 
-<Dialog
-  open={openConfirmGroupDelete}
-  onClose={() => setOpenConfirmGroupDelete(false)}
-  maxWidth="sm"
-  fullWidth
->
-  <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>⚠️ ยืนยันการลบ</DialogTitle>
-  <DialogContent>
-    <Typography variant="body1" sx={{ marginBottom: 2 }}>
-      คุณแน่ใจหรือไม่ว่าต้องการลบผู้ป่วยเหล่านี้?
-    </Typography>
-    <ul>
-      {patientsToDelete.map((patient) => (
-        <li key={patient.patient_id} style={{ fontSize: '1rem', marginBottom: '5px' }}>
-          {patient.name}
-        </li>
-      ))}
-    </ul>
-  </DialogContent>
-  <DialogActions>
-    <Button 
-      onClick={() => setOpenConfirmGroupDelete(false)} 
-      color="primary"
-      sx={{ fontSize: '1rem', fontWeight: 'bold'  }}
-    >
-      ยกเลิก
-    </Button>
-    <Button 
-      onClick={handleConfirmGroupDelete} 
-      color="error"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ยืนยันการลบ
-    </Button>
-  </DialogActions>
-</Dialog>
-
-
-
-<Dialog
-  open={openConfirmDeleteInEdit}
-  onClose={() => setOpenConfirmDeleteInEdit(false)}
-  maxWidth="sm"
-  fullWidth
->
-  <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>⚠️ ยืนยันการลบ</DialogTitle>
-  <DialogContent>
-    <Typography variant="body1" sx={{ marginBottom: 2 }}>
-      คุณแน่ใจหรือไม่ว่าต้องการลบ <b>{selectedPatient?.name}</b> ?
-    </Typography>
-  </DialogContent>
-  <DialogActions>
-    <Button 
-      onClick={() => setOpenConfirmDeleteInEdit(false)} 
-      color="primary"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ยกเลิก
-    </Button>
-    <Button 
-      onClick={handleDeletePatientInEdit} 
-      color="error"
-      sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-    >
-      ยืนยันการลบ
-    </Button>
-  </DialogActions>
-</Dialog>
-
-
-<Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)}>
-  <DialogTitle sx={{ position: 'relative', textAlign: 'center' }}>
-    ข้อมูลผู้ป่วย
-    <IconButton 
-      onClick={() => setOpenViewDialog(false)} 
-      sx={{ 
-        position: 'absolute', 
-        left: 10,  
-        top: 10,   
-      }}
-    >
-      ❌
-    </IconButton>
-  </DialogTitle>
-  <DialogContent>
-  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
-  <TextField 
-    label="ชื่อ-นามสกุล" 
-    value={selectedViewPatient?.name || ''} 
-    fullWidth 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
-  <TextField 
-    label="อายุ" 
-    value={selectedViewPatient?.age || ''} 
-    fullWidth 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
   
-  <TextField 
-    label="อาการแพ้" 
-    value={selectedViewPatient?.allergic || ''} 
-    fullWidth 
-    multiline 
-    rows={3} // ✅ เพิ่มความสูง
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
-  <TextField 
-    label="โรคประจำตัว" 
-    value={selectedViewPatient?.sickness || ''} 
-    fullWidth 
-    multiline 
-    rows={3} // ✅ เพิ่มความสูง
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
+      <Dialog open={openConfirmGroupDelete} onClose={() => setOpenConfirmGroupDelete(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>⚠️ ยืนยันการลบ</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ marginBottom: 2 }}>
+            คุณแน่ใจหรือไม่ว่าต้องการลบผู้ป่วยเหล่านี้?
+          </Typography>
+          <ul>
+            {patientsToDelete.map((patient) => (
+              <li key={patient.patient_id} style={{ fontSize: '1rem', marginBottom: '5px' }}>
+                {patient.name}
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenConfirmGroupDelete(false)} color="primary" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+            ยกเลิก
+          </Button>
+          <Button onClick={handleConfirmGroupDelete} color="error" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+            ยืนยันการลบ
+          </Button>
+        </DialogActions>
+      </Dialog>
   
-  <TextField 
-    label="ที่อยู่" 
-    value={selectedViewPatient?.address || ''} 
-    fullWidth 
-    multiline 
-    rows={3} 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
+      <Dialog open={openConfirmDeleteInEdit} onClose={() => setOpenConfirmDeleteInEdit(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>⚠️ ยืนยันการลบ</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ marginBottom: 2 }}>
+            คุณแน่ใจหรือไม่ว่าต้องการลบ <b>{selectedPatient?.name}</b> ?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenConfirmDeleteInEdit(false)} color="primary" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+            ยกเลิก
+          </Button>
+          <Button onClick={handleDeletePatientInEdit} color="error" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+            ยืนยันการลบ
+          </Button>
+        </DialogActions>
+      </Dialog>
   
-  <TextField 
-    label="เบอร์โทรศัพท์" 
-    value={selectedViewPatient?.tel || ''} 
-    fullWidth 
-    variant="outlined"
-    slotProps={{ inputLabel: { shrink: true } }} 
-  />
-  <LocalizationProvider dateAdapter={AdapterDateFns}>
-    <DatePicker
-      label="วันนัดหมาย"
-      value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
-      disabled={true} 
-      slots={{
-        textField: (params) => (
-          <TextField
-            {...params}
-            fullWidth
-            variant="outlined"
-            slotProps={{ inputLabel: { shrink: true } }}
-            value={selectedViewPatient?.appointment_date ? params.value : "ยังไม่ได้นัด"}  
-          />
-        ),
-      }}
-    />
-  </LocalizationProvider>
-</Box>
-
-  </DialogContent>
-</Dialog>
-
-    </div>
+      <Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)}>
+        <DialogTitle sx={{ position: 'relative', textAlign: 'center' }}>
+          ข้อมูลผู้ป่วย
+          <IconButton
+            onClick={() => setOpenViewDialog(false)}
+            sx={{
+              position: 'absolute',
+              left: 10,
+              top: 10,
+            }}
+          >
+            ❌
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
+            <TextField label="ชื่อ-นามสกุล" value={selectedViewPatient?.name || ''} fullWidth variant="outlined" />
+            <TextField label="อายุ" value={selectedViewPatient?.age || ''} fullWidth variant="outlined" />
+            <TextField label="อาการแพ้" value={selectedViewPatient?.allergic || ''} fullWidth multiline rows={3} variant="outlined" />
+            <TextField label="โรคประจำตัว" value={selectedViewPatient?.sickness || ''} fullWidth multiline rows={3} variant="outlined" />
+            <TextField label="ที่อยู่" value={selectedViewPatient?.address || ''} fullWidth multiline rows={3} variant="outlined" />
+            <TextField label="เบอร์โทรศัพท์" value={selectedViewPatient?.tel || ''} fullWidth variant="outlined" />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="วันนัดหมาย"
+                value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
+                disabled={true}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    variant: 'outlined',
+                  },
+                }}
+              />
+            </LocalizationProvider>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    </>
   );
+  
+
+  
 };
 
+
+
 export default Patient;
+export const PatientTableInternal = ({
+  rows,
+  filteredRows,
+  columns,
+  onViewRow,
+  search,
+  handleSearch,
+  anchorEl,
+  customStyle,
+  open,
+  handleClick,
+  handleFilterConfirm,
+  selectedAgeType,
+  ageInput,
+  selectedStatus,
+  selectedDiseases,
+  selectedProvinces,
+  setSelectedAgeType,
+  setAgeInput,
+  setSelectedStatus,
+  setSelectedDiseases,
+  setSelectedProvinces,
+  handleReset,
+  handleRowSelection,
+  selectedIds,
+  hideFooterPagination = false,
+  hideFooterSelectedRowCount = false,
+  showSelection = true,
+  groupManagementComponent = null,
+  height = "auto",
+  ...props
+}) => {
+  const defaultColumns = [
+    { field: 'patient_id', headerName: 'ID', width: 30 },
+    {
+      field: 'view',
+      headerName: '',
+      width: 60,
+      renderCell: (params) => (
+        <IconButton color="primary" onClick={() => onViewRow && onViewRow(params.row)}
+>
+          <FontAwesomeIcon icon={faSearch} />
+        </IconButton>
+      ),
+      sortable: false,
+      filterable: false,
+    },
+    { field: 'name', headerName: 'ชื่อ-นามสกุล', width: 200 },
+    { field: 'age', headerName: 'อายุ', width: 60 },
+    { field: 'tel', headerName: 'เบอร์โทร', width: 100 },
+    { field: 'email', headerName: 'อีเมล', width: 150 },
+    { field: 'address', headerName: 'ที่อยู่', width: 250 },
+    { field: 'sickness', headerName: 'โรคประจำตัว', width: 150 },
+    { field: 'allergic', headerName: 'อาการแพ้', width: 150 },
+    { field: 'status', headerName: 'สถานะ', width: 80 },
+    {
+      field: 'appointment_date',
+      headerName: 'Appointment',
+      width: 100,
+      renderCell: (params) => formatDate(params.value),
+    },
+  ];
+
+  const appliedColumns = columns && columns.length > 0 ? columns : defaultColumns;
+  return (
+    <div>
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+    <Box sx={{ marginRight: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <TextField 
+        label="Search" 
+        variant="outlined" 
+        size="small" 
+        value={search} 
+        onChange={handleSearch}
+        className="searchTextField"
+      />
+      <Button
+        variant="outlined"
+        onClick={handleClick}
+        sx={{
+          textTransform: "none",
+          fontSize: "14px",
+          padding: "4px 10px",
+          minWidth: "90px",
+          color: "rgba(0, 0, 0, 0.87)", 
+          borderColor: "rgba(0, 0, 0, 0.23)",
+          "&:hover": {
+            backgroundColor: "#f5f5f5", 
+            borderColor: "rgba(0, 0, 0, 0.87)",
+          },
+        }}
+      >
+        Filter▼
+      </Button>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleFilterConfirm}  
+        sx={{ padding: '8px' }}
+      >
+        <MenuItem>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 'bold' }}>อายุ</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <RadioGroup
+                row
+                value={selectedAgeType}
+                onChange={(e) => setSelectedAgeType(e.target.value)}
+              >
+                <FormControlLabel value="more" control={<Radio />} label="มากกว่า" />
+                <FormControlLabel value="less" control={<Radio />} label="น้อยกว่า" />
+              </RadioGroup>
+              <TextField 
+                type="number"
+                size="small"
+                value={ageInput}
+                onChange={(e) => setAgeInput(e.target.value)}
+                sx={{ width: '80px' }}
+              />
+            </Box>
+          </Box>
+        </MenuItem>
+
+        <MenuItem>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 'bold' }}>สถานะ</Typography>
+            <RadioGroup
+              row
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+            >
+              <FormControlLabel value="Active" control={<Radio />} label="Active" />
+              <FormControlLabel value="InActive" control={<Radio />} label="InActive" />
+            </RadioGroup>
+          </Box>
+        </MenuItem>
+
+        <MenuItem>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 'bold' }}>กรองโรค</Typography>
+            <TextField 
+              placeholder="เช่น หวัด,เบาหวาน"
+              size="small"
+              value={selectedDiseases}
+              onChange={(e) => setSelectedDiseases(e.target.value)}
+              sx={{ width: '100%' }}
+            />
+          </Box>
+        </MenuItem>
+
+        <MenuItem>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 2, alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 'bold' }}>จังหวัด</Typography>
+            <TextField 
+              placeholder="เช่น กรุงเทพ,เชียงใหม่"
+              size="small"
+              value={selectedProvinces}
+              onChange={(e) => setSelectedProvinces(e.target.value)}
+              sx={{ width: '100%' }}
+            />
+          </Box>
+        </MenuItem>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, px: 2 }}>
+          <Button 
+            variant="outlined" 
+            onClick={handleReset}
+            sx={{ 
+              padding: "6px 12px", 
+              borderRadius: "5px",
+              fontSize: "1rem", 
+              fontWeight: "bold", 
+              color: "red",                 
+              borderColor: "red",            
+              "&:hover": {
+                backgroundColor: "#ffebee",   
+                borderColor: "darkred",       
+              }
+            }}
+          >
+            รีเซ็ต
+          </Button>
+          <Button 
+            variant="outlined" 
+            onClick={handleFilterConfirm} 
+            color="success"
+            sx={{ 
+              padding: "6px 12px", 
+              borderRadius: "5px",
+              fontSize: "1rem", 
+              fontWeight: "bold", 
+            }}
+          >
+            ค้นหา
+          </Button>
+        </Box>
+      </Menu>
+
+      {groupManagementComponent && (
+        <Box sx={{ ml: 2 }}>
+          {groupManagementComponent}
+        </Box>
+      )}
+    </Box>
+  </div>
+
+  <DataGrid
+    rows={filteredRows} 
+    columns={appliedColumns}
+    pageSize={5}
+    rowsPerPageOptions={[5, 10, 15]}
+    checkboxSelection={showSelection}
+    getRowId={(row) => row.patient_id}
+    onRowSelectionModelChange={handleRowSelection}
+    hideFooterPagination={hideFooterPagination}
+    hideFooterSelectedRowCount={hideFooterSelectedRowCount} 
+    selectionModel={selectedIds}
+    className="dataGridStyle"
+    sx={{
+      maxHeight: height,     
+      overflowY: "auto",
+      ...customStyle,  
+    }}
+    />
+</div>
+  );
+};
