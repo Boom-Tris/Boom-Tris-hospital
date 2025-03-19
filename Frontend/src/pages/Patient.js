@@ -442,7 +442,11 @@ const handleGroupMenuClose = () => {
   
 
   return (
+    
     <>
+           <Typography variant="h3" gutterBottom>
+           PATIENT
+            </Typography>
       <PatientTableInternal
         rows={rows}
         filteredRows={filteredRows}
