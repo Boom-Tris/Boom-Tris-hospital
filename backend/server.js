@@ -163,6 +163,7 @@ app.post("/medical-personnel", async (req, res) => {
       username,
       password,
       name,
+      nickname,
       position,
       expertise,
       affiliation,
@@ -172,6 +173,7 @@ app.post("/medical-personnel", async (req, res) => {
       !username ||
       !password ||
       !name ||
+      !nickname||
       !position ||
       !expertise ||
       !affiliation ||
