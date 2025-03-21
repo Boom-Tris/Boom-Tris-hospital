@@ -14,7 +14,6 @@ const winston = require("winston");
 
 const cookieParser = require("cookie-parser");
 const dayjs = require("dayjs");
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 const saltRounds = 10;
