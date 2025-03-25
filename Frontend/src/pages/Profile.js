@@ -47,7 +47,7 @@ const Profile = () => {
         }}
       ></Box>
       <Typography variant="body1" gutterBottom>
-        โปรไฟล์ของคุณ
+        โปรไฟล์ของคุณ 
       </Typography>
 
       {/*Box */}
