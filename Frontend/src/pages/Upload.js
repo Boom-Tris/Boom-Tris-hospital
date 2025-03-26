@@ -12,24 +12,29 @@ import {
   IconButton,
   FormControlLabel,
   Checkbox,
+  ListItemSecondaryAction,
 } from "@mui/material";
+import { useDebounce } from "use-debounce";
+import Autocomplete from "@mui/material/Autocomplete";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { format, addDays, addWeeks, addMonths } from "date-fns";
-import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
 import { Snackbar, Alert } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-
+import { Delete, CheckCircle } from "@mui/icons-material";
 const Upload = () => {
   const [patientName, setPatientName] = useState("");
+  
   const [patients, setPatients] = useState([]);
+  const [debouncedPatientName] = useDebounce(patientName, 1000);
   const [loading, setLoading] = useState(false);
   const [sendDate, setSendDate] = useState(null);
   const [appointmentDate, setAppointmentDate] = useState(null);
   const [reminderTime, setReminderTime] = useState(null);
-
+  const [notificationNumber, setNotificationNumber] = useState("");
+  const [notificationUnit, setNotificationUnit] = useState("day");
   const [appointmentDetails, setAppointmentDetails] = useState("");
   const [includeDocumentDetails, setIncludeDocumentDetails] = useState(false);
   const [documentDetails, setDocumentDetails] = useState("");
@@ -38,13 +43,16 @@ const Upload = () => {
   const [dietDetails, setDietDetails] = useState("");
   const [includeMoreDetails, setIncludeMoreDetails] = useState(false);
   const [moreDetails, setMoreDetails] = useState("");
-
   const [notificationDate, setNotificationDate] = useState(null);
   const [notificationTime, setNotificationTime] = useState(null);
   const [notificationDetails, setNotificationDetails] = useState("");
   const [notificationDuration, setNotificationDuration] = useState("");
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState({});
+  const [selectedPatient, setSelectedPatient] = useState(null);
+
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -58,15 +66,38 @@ const Upload = () => {
       details.push(meetDoctor ? "ต้องไปพบแพทย์" : "ไม่ต้องไปพบแพทย์");
     }
     if (includeDocumentDetails && documentDetails.trim()) {
-      details.push(`เอกสารที่ต้องเตรียม: ${documentDetails}`);
+      details.push(`📃เอกสารที่ต้องเตรียม📃: \n${documentDetails}`);
     }
     if (includeDietDetails && dietDetails.trim()) {
-      details.push(`งดยา-งดอาหาร: ${dietDetails}`);
+      details.push(`🚫งดยา-งดอาหาร🥩: \n${dietDetails}`);
     }
     if (includeMoreDetails && moreDetails.trim()) {
-      details.push(`เพิ่มเติม: ${moreDetails}`);
+      details.push(`เพิ่มเติม: \n${moreDetails}`);
     }
-    setAppointmentDetails(details.join("\n"));
+    setAppointmentDetails(details.join("\n\n"));
+    let resultDate = null;
+  if (notificationNumber && notificationUnit) {
+    const number = parseInt(notificationNumber);
+    const baseDate = new Date();
+
+    if (notificationUnit === "day") {
+      resultDate = addDays(baseDate, number);
+    } else if (notificationUnit === "week") {
+      resultDate = addWeeks(baseDate, number);
+    } else if (notificationUnit === "month") {
+      resultDate = addMonths(baseDate, number);
+    } else if (notificationUnit === "year") {
+      resultDate = addMonths(baseDate, number * 12);
+    }
+    setNotificationDate(resultDate);
+  }
+  if (selectedPatient?.patient_id) {
+    fetchPatientFiles(selectedPatient.patient_id);
+  }
+  if (debouncedPatientName.trim()) {
+    handleSearchPatient();
+  }
+
   }, [
     meetDoctor,
     includeDocumentDetails,
@@ -75,7 +106,21 @@ const Upload = () => {
     dietDetails,
     includeMoreDetails,
     moreDetails,
+    notificationNumber,
+    notificationUnit,
+    selectedPatient,
+    patientName,
+    debouncedPatientName
   ]);
+
+  const removeFile = (fileName) => {
+    setFiles(files.filter((file) => file.name !== fileName));
+    setUploadStatus((prev) => {
+      const updatedStatus = { ...prev };
+      delete updatedStatus[fileName];
+      return updatedStatus;
+    });
+  };
 
   const resetForm = () => {
     setPatientName("");
@@ -97,7 +142,7 @@ const Upload = () => {
     setNotificationDuration("");
     setFiles([]);
   };
-
+  
   const handleNotificationDurationChange = (e) => {
     const duration = e.target.value;
     setNotificationDuration(duration);
@@ -125,11 +170,12 @@ const Upload = () => {
       const data = await response.json();
       setPatientFiles(data);
     } catch (error) {
-      console.error("Error fetching patient files:", error);
+      //console.error("Error fetching patient files:", error);
     }
   };
 
   const handleSearchPatient = async () => {
+    if (!patientName.trim()) return;
     setLoading(true);
     try {
       const response = await fetch(
@@ -142,12 +188,11 @@ const Upload = () => {
         fetchPatientFiles(data[0].patient_id);
       }
     } catch (error) {
-      console.error("Error fetching patient data:", error);
+    //  console.error("Error fetching patient data:", error);
     } finally {
       setLoading(false);
     }
   };
-
   const handleSetAppointment = async (patientId) => {
     if (!patientId) {
       setSnackbar({
@@ -212,7 +257,7 @@ const Upload = () => {
         message: "Error setting appointment.",
         severity: "error",
       });
-      console.error("Error:", error);
+      //console.error("Error:", error);
     }
   };
 
@@ -222,7 +267,7 @@ const Upload = () => {
 
   const handleUploadFiles = async (patientId, files) => {
     if (!files || files.length === 0) {
-      console.log("No files to upload");
+     // console.log("No files to upload");
       return;
     }
 
@@ -243,8 +288,8 @@ const Upload = () => {
         throw new Error("File upload failed");
       }
 
-      const result = await response.json();
-      console.log("Upload result:", result);
+    
+   //   console.log("Upload result:", result);
 
       setSnackbar({
         open: true,
@@ -254,7 +299,7 @@ const Upload = () => {
 
       setFiles([]);
     } catch (error) {
-      console.error("Error uploading files:", error);
+     // console.error("Error uploading files:", error);
       setSnackbar({
         open: true,
         message: "Error uploading files. Please check the console for details.",
@@ -297,20 +342,11 @@ const Upload = () => {
         message: "Error deleting file.",
         severity: "error",
       });
-      console.error("Error:", error);
+  //    console.error("Error:", error);
     }
   };
 
-  const renderFilePreviews = () => {
-    return files.map((file, index) => (
-      <ListItem key={index}>
-        <ListItemText
-          primary={file.name}
-          secondary={`Size: ${file.size} bytes`}
-        />
-      </ListItem>
-    ));
-  };
+
 
   const renderPatientFiles = () => {
     return patientFiles.map((file) => (
@@ -329,346 +365,369 @@ const Upload = () => {
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box>
-        <Typography variant="h3" gutterBottom>
-          Manage Appointments
-        </Typography>
-        <Box
-          sx={{
-            padding: 3,
-            backgroundColor: "white",
-            borderRadius: "10px",
-            boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
-          }}
-        >
-          <Grid container spacing={4}>
-            {/* ด้านซ้าย: แสดงข้อมูลผู้ป่วย */}
-            <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  padding: 2,
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                }}
-              >
+<LocalizationProvider dateAdapter={AdapterDateFns}>
+  <Box>
+    <Typography variant="h3" gutterBottom>
+      Manage Appointments
+      <Box sx={{ borderBottom: "2px solid #000", marginTop: 3 }}></Box>
+    </Typography>
+    <Box
+      sx={{
+        padding: 3,
+        backgroundColor: "white",
+        borderRadius: "10px",
+        boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
+        minHeight: '100%',
+      }}
+    >
+      <Grid container justifyContent="center" alignItems="center" spacing={4} sx={{ height: '100%' }}>
+       
+       
+        <Grid item xs={12} md={8}>
+          <Box>
+            
+          <Box>
+  <Typography variant="h5" gutterBottom>ค้นหาผู้ป่วย</Typography>
+            <Autocomplete
+            options={patients}
+            getOptionLabel={(option) => `${option.name} (${option.age} ปี)`}
+            isOptionEqualToValue={(option, value) => option.patient_id === value?.patient_id}
+            value={selectedPatient}
+            onChange={(e, value) => setSelectedPatient(value)}
+            inputValue={patientName}
+            onInputChange={(e, newInputValue) => setPatientName(newInputValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Search Patient by Name"
+                variant="outlined"
+                margin="normal"
+              />
+            )}
+          />
+
+</Box>
+{selectedPatient && (
+  <Box mt={0.1} p={2} sx={{ border: "1px solid #ddd", borderRadius: 2 }}>
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={6}>
+        <Typography variant="body2" color="text.secondary">Name: {selectedPatient.name}</Typography>
+        <Typography variant="body2" color="text.secondary">Age: {selectedPatient.age}</Typography>
+        <Typography variant="body2" color="text.secondary">Email: {selectedPatient.email}</Typography>
+        <Typography variant="body2" color="text.secondary">Tel: {selectedPatient.tel}</Typography>
+        <Typography variant="body2" color="text.secondary">Address: {selectedPatient.address}</Typography>
+        <Typography variant="body2" color="text.secondary">Sickness: {selectedPatient.sickness}</Typography>
+        <Typography variant="body2" color="text.secondary">Allergic: {selectedPatient.allergic}</Typography>
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <Typography variant="body2" color="text.secondary">Appointment Send Date: {selectedPatient.appointment_senddate || "Not available"}</Typography>
+        <Typography variant="body2" color="text.secondary">Appointment Date: {selectedPatient.appointment_date || "Not available"}</Typography>
+        <Typography variant="body2" color="text.secondary">Reminder Time: {selectedPatient.reminder_time || "Not available"}</Typography>
+        <Typography variant="body2" color="text.secondary">Appointment Details: {selectedPatient.appointment_details || "Not available"}</Typography>
+        <Typography variant="body2" color="text.secondary">Notification Date: {selectedPatient.notification_date || "Not available"}</Typography>
+        <Typography variant="body2" color="text.secondary">Notification Time: {selectedPatient.notification_time || "Not available"}</Typography>
+        <Typography variant="body2" color="text.secondary">Notification Details: {selectedPatient.notification_details || "Not available"}</Typography>
+      </Grid>
+    </Grid>
+  </Box>
+)}
+
+
+
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} mt={2.4}>
                 <Typography variant="h5" gutterBottom>
-                  Search Results
+                 ส่งการแจ้งเตือนประจำวัน
                 </Typography>
+                <Grid container spacing={1} alignItems="center">
+                <Grid item>
+                  <TextField
+                    label="จำนวน"
+                    type="number"
+                    value={notificationNumber}
+                    onChange={(e) => setNotificationNumber(e.target.value)}
+                    size="small"
+                    sx={{ width: 80 , height: 40 }}
+                  />
+                </Grid>
+                {["day", "week", "month", "year"].map((unit) => (
+                  <Grid item key={unit}>
+                    <Button
+                      variant={notificationUnit === unit ? "contained" : "outlined"}
+                      onClick={() => setNotificationUnit(unit)}
+                      color={notificationUnit === unit ? "primary" : "inherit"}
+                      size="small"
+                      sx={{ minWidth: 64, px: 2 , height: 40 }}
+                    >
+                      {unit === "day" && "วัน"}
+                      {unit === "week" && "สัปดาห์"}
+                      {unit === "month" && "เดือน"}
+                      {unit === "year" && "ปี"}
+                    </Button>
+                  </Grid>
+                ))}
+              </Grid>
+              </Grid>
+
+              <Grid item xs={12} mt={-3}>
                 <TextField
-                  fullWidth
-                  label="Search Patient by Name"
+                  label="รายละเอียดการแจ้งเตือน"
                   variant="outlined"
-                  value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
+                  value={notificationDetails}
+                  onChange={(e) => setNotificationDetails(e.target.value)}
                   margin="normal"
+                  fullWidth
+                  multiline
                 />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  sx={{ marginTop: 2 }}
-                  onClick={handleSearchPatient}
-                  disabled={loading}
-                >
-                  {loading ? <CircularProgress size={24} /> : "Search"}
-                </Button>
-                <List sx={{ maxHeight: 700, overflowY: "auto", marginTop: 2 }}>
-                  {patients.map((patient) => (
-                    <ListItem key={patient.patient_id}>
-                      <ListItemText
-                        secondary={
-                          <>
-                            <Typography variant="body2">
-                              Name: {patient.name}
-                            </Typography>
-                            <Typography variant="body2">
-                              Age: {patient.age}
-                            </Typography>
-                            <Typography variant="body2">
-                              Email: {patient.email}
-                            </Typography>
-                            <Typography variant="body2">
-                              Tel: {patient.tel}
-                            </Typography>
-                            <Typography variant="body2">
-                              Address: {patient.address}
-                            </Typography>
-                            <Typography variant="body2">
-                              Sickness: {patient.sickness}
-                            </Typography>
-                            <Typography variant="body2">
-                              Allergic: {patient.allergic}
-                            </Typography>
-                            <Typography variant="body2">
-                              Status: {patient.status}
-                            </Typography>
-                            <Typography variant="body2">
-                              Appointment Send Date:{" "}
-                              {patient.appointment_senddate || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Appointment Date:{" "}
-                              {patient.appointment_date || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Reminder Time:{" "}
-                              {patient.reminder_time || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Appointment Details:{" "}
-                              {patient.appointment_details || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Notification Date:{" "}
-                              {patient.notification_date || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Notification Time:{" "}
-                              {patient.notification_time || "Not available"}
-                            </Typography>
-                            <Typography variant="body2">
-                              Notification Details:{" "}
-                              {patient.notification_details || "Not available"}
-                            </Typography>
-                          </>
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            </Grid>
+              </Grid>
 
-            {/* ด้านขวา: ส่วนตั้งค่า */}
-            <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  padding: 2,
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                }}
-              >
+              <Grid item xs={12} mt={-2}>
+                <TimePicker
+                  value={notificationTime}
+                  onChange={(newTime) => setNotificationTime(newTime)}
+                  label="เวลาที่จะส่งการแจ้งเตือน"
+                  
+                  slotProps={{
+                    textField: {
+                      fullWidth: true, 
+                    },
+                  }}
+                  ampm={false}
+                  slots={{ textField: TextField }}
+                />
+              </Grid>
+
+              <Grid item xs={12} mt={3}>
+                <Typography variant="h5" gutterBottom>
+                  การนัดหมาย
+                </Typography>
+              </Grid>
+
+              <Grid item xs={4} mt={-2}>
+                <DatePicker
+                  value={appointmentDate}
+                  onChange={(newDate) => setAppointmentDate(newDate)}
+                  label="วันที่จะนัดหมาย"
+                 
+                  slotProps={{
+                    openPickerIcon: {
+                      color: "primary",
+                    },
+                  }}
+                  slots={{ textField: TextField }}
+                />
+              </Grid>
+
+              <Grid item xs={4} mt={-2} ml={-4}> 
+                <DatePicker
+                  value={sendDate}
+                  onChange={(newDate) => setSendDate(newDate)}
+                  label="วันที่จะมีการแจ้งเตือน"
+                 
+                  slotProps={{
+                    openPickerIcon: {
+                      color: "primary",
+                    },
+                  }}
+                  slots={{ textField: TextField }}
+                />
+              </Grid>
+
+              {/* Appointment Date */}
+              
+
+              {/* Reminder Time */}
+              <Grid item xs={4} mt={-2} ml={-4}>
+                <TimePicker
+                  value={reminderTime}
+                  onChange={(newTime) => setReminderTime(newTime)}
+                  label="เวลาที่จะส่งการแจ้งเตือน"
+                
+                  slotProps={{
+                    openPickerIcon: {
+                      color: "primary",
+                    },
+                  }}
+                  ampm={false}
+                  slots={{ textField: TextField }}
+                />
+              </Grid>
+
+              {/* Additional Details */}
+              <Grid item xs={12}>
+                <Typography variant="h5" gutterBottom>
+                  Additional Details
+                </Typography>
                 <Grid container spacing={2}>
-                  {/* Scheduled Settings */}
-                  <Grid item xs={12}>
-                    <Typography variant="h5" gutterBottom>
-                      Scheduled Settings
-                    </Typography>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={meetDoctor === true}
+                          onChange={() =>
+                            setMeetDoctor(meetDoctor === true ? null : true)
+                          }
+                        />
+                      }
+                      label="ต้องไปพบแพทย์"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={meetDoctor === false}
+                          onChange={() =>
+                            setMeetDoctor(meetDoctor === false ? null : false)
+                          }
+                        />
+                      }
+                      label="ไม่ต้องไปพบแพทย์"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={includeDocumentDetails}
+                          onChange={(e) =>
+                            setIncludeDocumentDetails(e.target.checked)
+                          }
+                        />
+                      }
+                      label="เอกสารที่ต้องเตรียม"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={includeDietDetails}
+                          onChange={(e) =>
+                            setIncludeDietDetails(e.target.checked)
+                          }
+                        />
+                      }
+                      label="งดอาหาร - งดยา"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={includeMoreDetails}
+                          onChange={(e) =>
+                            setIncludeMoreDetails(e.target.checked)
+                          }
+                        />
+                      }
+                      label="เพิ่มเติม"
+                    />
+                  </Grid>
+                </Grid>
+                <Box display="flex" flexDirection="column">
+                  {includeDocumentDetails && (
                     <TextField
-                      label="Notification Duration (e.g., 1 day, 2 weeks, 3 months)"
-                      fullWidth
+                      label="รายละเอียดเอกสาร"
                       variant="outlined"
-                      value={notificationDuration}
-                      onChange={handleNotificationDurationChange}
+                      value={documentDetails}
+                      onChange={(e) => setDocumentDetails(e.target.value)}
                       margin="normal"
+                      fullWidth
+                      multiline
                     />
-                  </Grid>
-                  <Grid item xs={12}>
+                  )}
+                  {includeDietDetails && (
                     <TextField
-                      label="Notification Details"
+                      label="รายละเอียดงดอาหาร - งดยา"
                       variant="outlined"
-                      value={notificationDetails}
-                      onChange={(e) => setNotificationDetails(e.target.value)}
+                      value={dietDetails}
+                      onChange={(e) => setDietDetails(e.target.value)}
                       margin="normal"
                       fullWidth
+                      multiline
                     />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TimePicker
-                      value={notificationTime}
-                      onChange={(newTime) => setNotificationTime(newTime)}
-                      label="Notification Time"
-                      slots={{ openPickerIcon: FlightTakeoffIcon }}
-                      slotProps={{
-                        openPickerIcon: {
-                          color: "primary",
-                        },
-                      }}
-                      ampm={false}
-                      renderInput={(params) => (
-                        <TextField {...params} fullWidth />
-                      )}
+                  )}
+                  {includeMoreDetails && (
+                    <TextField
+                      label="รายละเอียดเพิ่มเติม"
+                      variant="outlined"
+                      value={moreDetails}
+                      onChange={(e) => setMoreDetails(e.target.value)}
+                      margin="normal"
+                      fullWidth
+                      multiline
                     />
-                  </Grid>
-
-                  {/* Appointment Settings */}
-                  <Grid item xs={12}>
-                    <Typography variant="h5" gutterBottom>
-                      Appointment Settings
-                    </Typography>
-                    <DatePicker
-                      value={sendDate}
-                      onChange={(newDate) => setSendDate(newDate)}
-                      label="Appointment Send Date"
-                      slots={{ openPickerIcon: FlightTakeoffIcon }}
-                      slotProps={{
-                        openPickerIcon: {
-                          color: "primary",
-                        },
-                      }}
-                      renderInput={(params) => (
-                        <TextField {...params} fullWidth />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <DatePicker
-                      value={appointmentDate}
-                      onChange={(newDate) => setAppointmentDate(newDate)}
-                      label="Appointment Date"
-                      slots={{ openPickerIcon: FlightTakeoffIcon }}
-                      slotProps={{
-                        openPickerIcon: {
-                          color: "primary",
-                        },
-                      }}
-                      renderInput={(params) => (
-                        <TextField {...params} fullWidth />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TimePicker
-                      value={reminderTime}
-                      onChange={(newTime) => setReminderTime(newTime)}
-                      label="Reminder Time"
-                      slots={{ openPickerIcon: FlightTakeoffIcon }}
-                      slotProps={{
-                        openPickerIcon: {
-                          color: "primary",
-                        },
-                      }}
-                      ampm={false}
-                      renderInput={(params) => (
-                        <TextField {...params} fullWidth />
-                      )}
-                    />
-                  </Grid>
-
-                  {/* Additional Details */}
-                  <Grid item xs={12}>
-                    <Typography variant="h5" gutterBottom>
-                      Additional Details
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={meetDoctor === true}
-                              onChange={() =>
-                                setMeetDoctor(meetDoctor === true ? null : true)
-                              }
-                            />
-                          }
-                          label="ต้องไปพบแพทย์"
-                        />
-                      </Grid>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={meetDoctor === false}
-                              onChange={() =>
-                                setMeetDoctor(
-                                  meetDoctor === false ? null : false
-                                )
-                              }
-                            />
-                          }
-                          label="ไม่ต้องไปพบแพทย์"
-                        />
-                      </Grid>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={includeDocumentDetails}
-                              onChange={(e) =>
-                                setIncludeDocumentDetails(e.target.checked)
-                              }
-                            />
-                          }
-                          label="เอกสารที่ต้องเตรียม"
-                        />
-                      </Grid>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={includeDietDetails}
-                              onChange={(e) =>
-                                setIncludeDietDetails(e.target.checked)
-                              }
-                            />
-                          }
-                          label="งดอาหาร - งดยา"
-                        />
-                      </Grid>
-                      <Grid item>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={includeMoreDetails}
-                              onChange={(e) =>
-                                setIncludeMoreDetails(e.target.checked)
-                              }
-                            />
-                          }
-                          label="เพิ่มเติม"
-                        />
-                      </Grid>
-                    </Grid>
-                    <Box display="flex" flexDirection="column">
-                      {includeDocumentDetails && (
-                        <TextField
-                          label="รายละเอียดเอกสาร"
-                          variant="outlined"
-                          value={documentDetails}
-                          onChange={(e) => setDocumentDetails(e.target.value)}
-                          margin="normal"
-                          fullWidth
-                        />
-                      )}
-                      {includeDietDetails && (
-                        <TextField
-                          label="รายละเอียดงดอาหาร - งดยา"
-                          variant="outlined"
-                          value={dietDetails}
-                          onChange={(e) => setDietDetails(e.target.value)}
-                          margin="normal"
-                          fullWidth
-                        />
-                      )}
-                      {includeMoreDetails && (
-                        <TextField
-                          label="รายละเอียดเพิ่มเติม"
-                          variant="outlined"
-                          value={moreDetails}
-                          onChange={(e) => setMoreDetails(e.target.value)}
-                          margin="normal"
-                          fullWidth
-                        />
-                      )}
-                    </Box>
-                  </Grid>
+                  )}
 
                   {/* Uploaded Files */}
                   <Grid item xs={12}>
-                    <Typography variant="h6" gutterBottom>
-                      Uploaded Files
-                    </Typography>
-                    <input
-                      type="file"
-                      multiple
-                      onChange={handleFileChange}
-                      style={{ marginTop: 10 }}
-                    />
-                    <List>{renderFilePreviews()}</List>
-                  </Grid>
+  <Typography variant="h6" gutterBottom>
+    Uploaded Files
+  </Typography>
 
+  <Box>
+    <Typography mb={1} sx={{ textAlign: "center" }}>
+      Link or drag and drop
+    </Typography>
+    <Button
+      variant="outlined"
+      component="label"
+      sx={{
+        border: "2px dashed #ddd",
+        padding: "20px",
+        width: "100%",
+        textTransform: "none",
+      }}
+    >
+      Select Files
+      <input
+        type="file"
+        hidden
+        multiple
+        onChange={handleFileChange}
+      />
+    </Button>
+  </Box>
+
+  <List sx={{ mt: 2, maxHeight: 200, overflowY: "auto" }}>
+    {files.map((file) => (
+      <ListItem
+        key={file.name}
+        sx={{
+          borderBottom: "1px solid #ddd",
+          paddingBottom: "10px",
+        }}
+      >
+        <ListItemText
+          primary={file.name}
+          secondary={`Size: ${(file.size / 1024).toFixed(2)} KB`}
+        />
+        <ListItemSecondaryAction>
+          {uploadStatus[file.name] === "loading" && (
+            <CircularProgress size={24} />
+          )}
+          {uploadStatus[file.name] === "complete" && (
+            <CheckCircle color="success" />
+          )}
+          {uploadStatus[file.name] === "failed" && (
+            <Typography color="error" variant="caption">
+              Upload failed
+            </Typography>
+          )}
+          <IconButton
+            edge="end"
+            aria-label="delete"
+            onClick={() => removeFile(file.name)}
+          >
+            <Delete />
+          </IconButton>
+        </ListItemSecondaryAction>
+      </ListItem>
+    ))}
+  </List>
+</Grid>
                   {/* Files */}
                   <Grid item xs={12}>
                     <Typography variant="h6" gutterBottom>
@@ -682,38 +741,42 @@ const Upload = () => {
                     <Button
                       variant="contained"
                       color="primary"
-                      onClick={() =>
-                        handleSetAppointment(patients[0]?.patient_id)
-                      }
+                      onClick={() => handleSetAppointment(selectedPatient?.patient_id)}
                       disabled={uploading}
                       fullWidth
                     >
                       {uploading ? <CircularProgress size={24} /> : "SUBMIT"}
                     </Button>
                   </Grid>
-                </Grid>
-              </Box>
+                </Box>
+              </Grid>
             </Grid>
-          </Grid>
-        </Box>
-      </Box>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        action={
-          <Button
-            color="inherit"
-            size="small"
-            onClick={() => setSnackbar({ ...snackbar, open: false })}
-          >
-            CLOSE
-          </Button>
-        }
+          </Box>
+        </Grid>
+
+      </Grid>
+
+    </Box>
+  </Box>
+
+  <Snackbar
+    open={snackbar.open}
+    autoHideDuration={3000}
+    onClose={() => setSnackbar({ ...snackbar, open: false })}
+    action={
+      <Button
+        color="inherit"
+        size="small"
+        onClick={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
-    </LocalizationProvider>
+        CLOSE
+      </Button>
+    }
+  >
+    <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+  </Snackbar>
+</LocalizationProvider>
+
   );
 };
 
