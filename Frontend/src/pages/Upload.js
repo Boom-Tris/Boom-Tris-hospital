@@ -14,7 +14,6 @@ import {
   Checkbox,
   ListItemSecondaryAction,
 } from "@mui/material";
-import { useDebounce } from "use-debounce";
 import Autocomplete from "@mui/material/Autocomplete";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -28,7 +27,6 @@ const Upload = () => {
   const [patientName, setPatientName] = useState("");
   
   const [patients, setPatients] = useState([]);
-  const [debouncedPatientName] = useDebounce(patientName, 1000);
   const [loading, setLoading] = useState(false);
   const [sendDate, setSendDate] = useState(null);
   const [appointmentDate, setAppointmentDate] = useState(null);
@@ -94,9 +92,6 @@ const Upload = () => {
   if (selectedPatient?.patient_id) {
     fetchPatientFiles(selectedPatient.patient_id);
   }
-  if (debouncedPatientName.trim()) {
-    handleSearchPatient();
-  }
 
   }, [
     meetDoctor,
@@ -110,7 +105,6 @@ const Upload = () => {
     notificationUnit,
     selectedPatient,
     patientName,
-    debouncedPatientName
   ]);
 
   const removeFile = (fileName) => {
@@ -387,26 +381,53 @@ const Upload = () => {
           <Box>
             
           <Box>
-  <Typography variant="h5" gutterBottom>ค้นหาผู้ป่วย</Typography>
-            <Autocomplete
-            options={patients}
-            getOptionLabel={(option) => `${option.name} (${option.age} ปี)`}
-            isOptionEqualToValue={(option, value) => option.patient_id === value?.patient_id}
-            value={selectedPatient}
-            onChange={(e, value) => setSelectedPatient(value)}
-            inputValue={patientName}
-            onInputChange={(e, newInputValue) => setPatientName(newInputValue)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search Patient by Name"
-                variant="outlined"
-                margin="normal"
-              />
-            )}
-          />
+        <Typography variant="h5" gutterBottom>ค้นหาผู้ป่วย</Typography>
+        <TextField
+          label="Search Patient by Name"
+          variant="outlined"
+          margin="normal"
+          fullWidth
+          value={patientName}
+          onChange={(e) => setPatientName(e.target.value)}
+        />
 
-</Box>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSearchPatient}
+          sx={{ mt: 1 }}
+        >
+          ค้นหา
+        </Button>
+      </Box>
+
+      {patients.length > 0 && (
+  <Box mt={2}>
+    <Typography variant="h6">ผลการค้นหา:</Typography>
+    <List>
+      {patients.map((patient) => (
+        <ListItem 
+        button 
+        key={patient.patient_id} 
+        selected={selectedPatient?.patient_id === patient.patient_id}
+        onClick={() => setSelectedPatient(patient)}
+        sx={{
+          backgroundColor: selectedPatient?.patient_id === patient.patient_id ? '#e0e0e0' : 'inherit',
+          borderRadius: 1,
+          mb: 1
+        }}
+      >
+          <ListItemText 
+            primary={`${patient.name} (${patient.age} ปี)`} 
+            secondary={patient.email}
+          />
+        </ListItem>
+      ))}
+    </List>
+  </Box>
+)}
+
+
 {selectedPatient && (
   <Box mt={0.1} p={2} sx={{ border: "1px solid #ddd", borderRadius: 2 }}>
     <Grid container spacing={2}>
