@@ -237,9 +237,6 @@ const handleGroupMenuClose = () => {
   }, [rows]);
   
   
-
-
-
   const handleEditRow = (patient) => {
     setSelectedPatient(patient);
     setOpenEditDialog(true);
@@ -385,7 +382,6 @@ const handleGroupMenuClose = () => {
     </>
   );
   
-
   return (
     
     <>
@@ -509,37 +505,7 @@ const handleGroupMenuClose = () => {
       </Box>
 
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
-  <DatePicker
-    label="เลือกวันนัดหมาย"
-    value={selectedPatient?.appointment_date ? new Date(selectedPatient.appointment_date) : null}
-    onChange={(date) => {
-      if (date) {
-        const formattedDate = date.toISOString().split('T')[0]; // แปลงเป็น "YYYY-MM-DD"
-       // console.log("📅 วันนัดหมายที่เลือก:", formattedDate); // Debug
-        setSelectedPatient((prev) => {
-          const updated = {
-            ...prev,
-            appointment_date: formattedDate
-          };
-      //    console.log("🔄 ข้อมูลผู้ป่วยหลังอัพเดท:", updated); // Debug
-          return updated;
-        });
-      } else {
-        setSelectedPatient((prev) => ({
-          ...prev,
-          appointment_date: null,
-        }));
-      }
-    }}
-    slotProps={{ 
-      textField: { 
-        fullWidth: true,
-        variant: "outlined" 
-      } 
-    }}
-  />
-</LocalizationProvider>
+      
 
 </LocalizationProvider>
 
