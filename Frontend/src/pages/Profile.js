@@ -41,7 +41,7 @@ const Profile = () => {
         const user = JSON.parse(userRaw);
         const userId = user?.medicalpersonnel_id;
 
-        console.log("📌 User ID from LocalStorage:", userId);
+     //   console.log("📌 User ID from LocalStorage:", userId);
 
         if (!userId) {
           setError("User ID not found");
@@ -50,7 +50,7 @@ const Profile = () => {
 
         // ✅ เรียก API โดยส่ง userId ใน URL
         const response = await axios.get(`http://localhost:3001/getProfiled/${userId}`);
-        console.log("📌 API Response Data:", response.data);
+     //   console.log("📌 API Response Data:", response.data);
 
         if (response.data && response.data.medicalpersonnel_id) {
           // ✅ ใช้ข้อมูลที่ได้จาก API อัปเดต state
@@ -68,7 +68,7 @@ const Profile = () => {
           setError("Profile not found for this user.");
         }
       } catch (error) {
-        console.error("❌ API Error:", error);
+     //   console.error("❌ API Error:", error);
         setError("Error fetching profile. Please try again.");
       }
     };
@@ -77,12 +77,12 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    console.log("📌 Updated Profile Data:", profile);
+   // console.log("📌 Updated Profile Data:", profile);
   }, [profile]);
 
   // ✅ Handle Save Profile Updates
   const handleSaveProfile = () => {
-    console.log("✅ Saving Profile:", profile);
+ //  console.log("✅ Saving Profile:", profile);
     setOpenEditDialog(false);
   };
 

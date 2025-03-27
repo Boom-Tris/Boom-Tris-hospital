@@ -93,15 +93,20 @@
                 label="จำข้อมูล"
                 className="checkbox"
               />
-              {error && <Typography color="error">{error}</Typography>}
-              <Button
-                variant="contained"
-                color="primary"
-                className="sign-in-button"
-                type="submit"
-              >
-                เข้าสู่ระบบ
-              </Button>
+       {error && (
+  <Typography color="error" sx={{ marginBottom: 2 }}>
+    {error}
+  </Typography>
+)}
+<Button
+  variant="contained"
+  color="primary"
+  className="sign-in-button"
+  type="submit"
+>
+  เข้าสู่ระบบ
+</Button>
+
             </form>
           </Box>
           

@@ -71,27 +71,29 @@ const Sidebar = ({ children }) => {
         <Typography variant="h5" className="menu-title">
           Menu
         </Typography>
-        <List>
-          {menuItems.map((item) => (
-            <ListItem
-              button="true" // แปลงเป็นสตริง
-              key={item.text}
-              className={`menu-item ${selectedMenu === item.text ? 'selected' : ''}`}
-              onClick={() => {
-                if (item.text === 'LOG OUT') {
-                  handleLogout(); // ถ้าคลิก "LOG OUT" จะเรียก handleLogout
-                } else {
-                  handleMenuClick(item.text);
-                }
-              }}
-            >
-              <ListItemIcon>
-                <FontAwesomeIcon icon={item.icon} size="lg" className="icon-color" />
-              </ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItem>
-          ))}
-        </List>
+        <List sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+  {menuItems.map((item) => (
+    <ListItem
+      button="true"
+      key={item.text}
+      className={`menu-item ${selectedMenu === item.text ? 'selected' : ''}`}
+      onClick={() => {
+        if (item.text === 'LOG OUT') {
+          handleLogout();
+        } else {
+          handleMenuClick(item.text);
+        }
+      }}
+      sx={item.text === 'LOG OUT' ? { marginTop: 'auto' } : {}}
+    >
+      <ListItemIcon>
+        <FontAwesomeIcon icon={item.icon} size="lg" className="icon-color" />
+      </ListItemIcon>
+      <ListItemText primary={item.text} />
+    </ListItem>
+  ))}
+</List>
+
       </Box>
 
       {/* Content */}
