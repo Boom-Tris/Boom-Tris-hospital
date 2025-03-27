@@ -52,10 +52,6 @@ const Patient = () => {
   setAnchorEl(event.currentTarget);
 };
 
-
-
-
-
 const handleOpenConfirmDeleteInEdit = () => {
   setOpenConfirmDeleteInEdit(true);
 };
@@ -246,6 +242,17 @@ const handleGroupMenuClose = () => {
     setSelectedViewPatient(patient);  // ตั้งค่า selectedViewPatient ให้เป็นผู้ป่วยที่เลือก
     setOpenViewDialog(true);  // เปิด Dialog เพื่อแสดงข้อมูล
   };
+
+  const isEmailValid = selectedPatient?.email
+  ? /^[a-zA-Z0-9._%+-]+@(gmail\.com|hotmail\.com)$/.test(selectedPatient.email)
+  : false;
+
+  const isPhoneValid = selectedPatient?.tel
+  ? /^(06|08|09)[0-9]{8}$/.test(selectedPatient.tel)
+  : false;
+
+  const isSaveDisabled = !isEmailValid || !isPhoneValid;
+
   
   const handleUpdatePatient = async () => {
     if (!selectedPatient) return;
@@ -468,7 +475,7 @@ const handleGroupMenuClose = () => {
       />
 
       <Box sx={{ display: 'grid', gap: 1.6 }}>
-        <TextField 
+      <TextField 
           label="เบอร์โทรศัพท์" 
           value={selectedPatient?.tel || ''} 
           onChange={(e) => {
@@ -477,6 +484,15 @@ const handleGroupMenuClose = () => {
           }} 
           variant="outlined"
           fullWidth 
+          error={selectedPatient?.tel && !/^(06|08|09)[0-9]{8}$/.test(selectedPatient.tel)}
+          h helperText={
+            selectedPatient?.tel && !/^(06|08|09)[0-9]{8}$/.test(selectedPatient.tel) ? (
+              <>
+                ขึ้นด้วย 06, 08, 09<br />
+                และต้องมี 10 หลัก
+              </>
+            ) : ""
+          }
         />
 
         <TextField
@@ -492,15 +508,23 @@ const handleGroupMenuClose = () => {
         </TextField>
 
         <TextField 
-          label="อีเมล" 
-          value={selectedPatient?.email || ''} 
-          onChange={(e) => setSelectedPatient({ ...selectedPatient, email: e.target.value })} 
-          variant="outlined"
-          fullWidth 
-          error={selectedPatient?.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(selectedPatient.email)}
-          helperText={selectedPatient?.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(selectedPatient.email) ? "กรุณากรอกอีเมลที่ถูกต้อง" : ""}
-          sx={{ gridColumn: 'span 2' }} // ✅ ทำให้ขยายเต็ม 2 คอลัมน์
-/>
+        label="อีเมล" 
+        value={selectedPatient?.email || ''} 
+        onChange={(e) => setSelectedPatient({ ...selectedPatient, email: e.target.value })} 
+        variant="outlined"
+        fullWidth 
+        error={selectedPatient?.email && !/^[a-zA-Z0-9._%+-]+@(gmail\.com|hotmail\.com)$/.test(selectedPatient.email)}
+        helperText={
+          selectedPatient?.email &&
+          !/^[a-zA-Z0-9._%+-]+@(gmail\.com|hotmail\.com)$/.test(selectedPatient.email) ? (
+            <>
+              ต้องลงท้ายด้วย@gmail.com <br />       หรือ @hotmail.com
+            </>
+          ) : ""
+        }
+        sx={{ gridColumn: 'span 2' }}
+      />
+
 
       </Box>
 
@@ -532,7 +556,12 @@ const handleGroupMenuClose = () => {
 
   <Box sx={{ display: "flex", gap: "8px" }}>
     <Button onClick={() => setOpenEditDialog(false)}>CANCEL</Button>
-    <Button onClick={handleUpdatePatient} color="primary">SAVE</Button> {/* เรียกใช้ handleUpdatePatient */}
+    <Button 
+            onClick={handleUpdatePatient} 
+            color="primary"
+            disabled={isSaveDisabled}
+            >SAVE
+    </Button> {/* เรียกใช้ handleUpdatePatient */}
   </Box>
 </DialogActions>
 
@@ -595,28 +624,57 @@ const handleGroupMenuClose = () => {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
-            <TextField label="ชื่อ-นามสกุล" value={selectedViewPatient?.name || ''} fullWidth variant="outlined" />
-            <TextField label="อายุ" value={selectedViewPatient?.age || ''} fullWidth variant="outlined" />
-            <TextField label="อาการแพ้" value={selectedViewPatient?.allergic || ''} fullWidth multiline rows={3} variant="outlined" />
-            <TextField label="โรคประจำตัว" value={selectedViewPatient?.sickness || ''} fullWidth multiline rows={3} variant="outlined" />
-            <TextField label="ที่อยู่" value={selectedViewPatient?.address || ''} fullWidth multiline rows={3} variant="outlined" />
-            <TextField label="เบอร์โทรศัพท์" value={selectedViewPatient?.tel || ''} fullWidth variant="outlined" />
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="วันนัดหมาย"
-                value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
-                disabled={true}
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    variant: 'outlined',
-                  },
-                }}
-              />
-            </LocalizationProvider>
-          </Box>
-        </DialogContent>
+  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, paddingTop: 2 }}>
+    <TextField label="ชื่อ-นามสกุล" value={selectedViewPatient?.name || ''} fullWidth variant="outlined" />
+    <TextField label="อายุ" value={selectedViewPatient?.age || ''} fullWidth variant="outlined" />
+
+    <TextField label="อาการแพ้" value={selectedViewPatient?.allergic || ''} fullWidth multiline rows={3} variant="outlined" />
+    <TextField label="โรคประจำตัว" value={selectedViewPatient?.sickness || ''} fullWidth multiline rows={3} variant="outlined" />
+
+    {/* ✅ ซ้าย: ที่อยู่ | ขวา: กล่องซ้อนกัน (เบอร์ + อีเมล) */}
+    <TextField
+      label="ที่อยู่"
+      value={selectedViewPatient?.address || ''}
+      fullWidth
+      multiline
+      rows={5}
+      variant="outlined"
+    />
+
+    <Box sx={{ display: 'grid', gap: 2 }}>
+      <TextField
+        label="เบอร์โทรศัพท์"
+        value={selectedViewPatient?.tel || ''}
+        fullWidth
+        variant="outlined"
+      />
+      <TextField
+        label="อีเมล"
+        value={selectedViewPatient?.email || ''}
+        fullWidth
+        variant="outlined"
+      />
+    </Box>
+
+    <Box sx={{ gridColumn: 'span 2' }}>
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <DatePicker
+          label="วันนัดหมาย"
+          value={selectedViewPatient?.appointment_date ? new Date(selectedViewPatient.appointment_date) : null}
+          disabled
+          slotProps={{
+            textField: {
+              fullWidth: true,
+              variant: 'outlined',
+            },
+          }}
+        />
+      </LocalizationProvider>
+    </Box>
+  </Box>
+</DialogContent>
+
+
       </Dialog>
     </>
   );
