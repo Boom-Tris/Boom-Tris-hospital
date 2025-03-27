@@ -45,20 +45,29 @@ const logger = winston.createLogger({
     new winston.transports.File({ filename: "logfile.log" }),
   ],
 });
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: "Too many requests, please try again later.",
-});
-app.use(limiter);
+if (process.env.NODE_ENV === "production") {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: "Too many requests, please try again later.",
+  });
+  app.use(limiter);
+}
+
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:3000"];
 
 // 🌍 CORS Configuration (จำกัด origin)
 const corsOptions = {
-  origin: process.env.CORS_ALLOWED_ORIGINS?.split(",") || "*",
+  origin: "http://localhost:3000",
   methods: ["GET", "POST", "DELETE", "PUT"],
   credentials: true,
-  allowedHeaders: "Content-Type,Authorization",
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
+
+
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -104,29 +113,6 @@ app.get("/getProfile", async (req, res) => {
   }
 });
 
-app.use(cookieParser());
-
-// ดึงข้อมูลโปรไฟล์
-app.get("/getProfiled/:id", async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const { data, error } = await supabase
-      .from("medicalpersonnel")
-      .select("*")
-      .eq("medicalpersonnel_id", id)
-      .single();
-
-    if (error || !data) {
-      return res.status(404).json({ message: "Profile not found" });
-    }
-
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ message: "Internal Server Error", error: err.message });
-  }
-});
-
 // Login สำหรับ Admin และ Medical Personnel
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -144,39 +130,27 @@ app.post("/login", async (req, res) => {
         .select("*")
         .eq("username", cleanUsername)
         .single();
-
       if (!error && user) {
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
-          // ✅ สร้าง JWT Token
+          // สร้าง JWT Token
+      
           const token = jwt.sign(
             { username: user.username, role: table },
             process.env.JWT_SECRET,
             { expiresIn: "2h" }
           );
 
-          // ✅ ตั้งค่า cookie เป็น HTTP-only
+          // ตั้งค่า cookie เป็น HTTP-only
           res.cookie("token", token, {
-            httpOnly: true, 
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 2 * 60 * 60 * 1000, 
+            httpOnly: true, // ป้องกันการเข้าถึงจาก JavaScript
+            secure: process.env.NODE_ENV === "production", // ใช้ HTTPS ใน production
+            maxAge: 2 * 60 * 60 * 1000, // ใช้เวลา 2 ชั่วโมง
           });
-
-          // ✅ เตรียมข้อมูล user ที่จะส่งกลับ
-          let userData = {
-            username: user.username,
-            role: table
-          };
-
-          // ✅ ถ้าเป็น medicalpersonnel ให้เพิ่ม medicalpersonnel_id
-          if (table === "medicalpersonnel") {
-            userData.medicalpersonnel_id = user.medicalpersonnel_id; 
-          }
 
           return res.json({
             message: "Login Success",
-            user: userData,
-            token: token, // ✅ ส่ง token กลับมาด้วย
+            user: { username: user.username, role: table },
           });
         } else {
           return res.status(401).json({ message: "Invalid password" });
@@ -852,7 +826,7 @@ async function sendNotification(patient, type) {
     console.log(`⏰ ถึงเวลาส่งแจ้งเตือนให้ ${patient.name} แล้ว`);
     let message = "";
     if (type === "Appointment") {
-      message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
+      message = `แจ้งเตือน:\n คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
     } else if (type === "Scheduled") {
       message = `แจ้งเตือนตามระยะเวลาถึงคุณ ${patient.name}\nรายละเอียด:\n${notification_details}`;
     } else if (type === "SendDate") {
