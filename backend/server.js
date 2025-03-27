@@ -45,20 +45,29 @@ const logger = winston.createLogger({
     new winston.transports.File({ filename: "logfile.log" }),
   ],
 });
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: "Too many requests, please try again later.",
-});
-app.use(limiter);
+if (process.env.NODE_ENV === "production") {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: "Too many requests, please try again later.",
+  });
+  app.use(limiter);
+}
+
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:3000"];
 
 // 🌍 CORS Configuration (จำกัด origin)
 const corsOptions = {
-  origin: process.env.CORS_ALLOWED_ORIGINS?.split(",") || "*",
+  origin: "http://localhost:3000",
   methods: ["GET", "POST", "DELETE", "PUT"],
   credentials: true,
-  allowedHeaders: "Content-Type,Authorization",
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
+
+
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -817,7 +826,7 @@ async function sendNotification(patient, type) {
     console.log(`⏰ ถึงเวลาส่งแจ้งเตือนให้ ${patient.name} แล้ว`);
     let message = "";
     if (type === "Appointment") {
-      message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
+      message = `แจ้งเตือน:\n คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
     } else if (type === "Scheduled") {
       message = `แจ้งเตือนตามระยะเวลาถึงคุณ ${patient.name}\nรายละเอียด:\n${notification_details}`;
     } else if (type === "SendDate") {
