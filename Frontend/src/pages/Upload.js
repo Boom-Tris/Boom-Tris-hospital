@@ -14,7 +14,6 @@ import {
   Checkbox,
   ListItemSecondaryAction,
 } from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
@@ -60,39 +59,37 @@ const Upload = () => {
 
   useEffect(() => {
     let details = [];
+  
     if (meetDoctor !== null) {
       details.push(meetDoctor ? "ต้องไปพบแพทย์" : "ไม่ต้องไปพบแพทย์");
     }
+  
     if (includeDocumentDetails && documentDetails.trim()) {
-      details.push(`📃เอกสารที่ต้องเตรียม📃: \n${documentDetails}`);
+      details.push(`📃เอกสารที่ต้องเตรียม📃:\n${documentDetails.trim()}`);
     }
+  
     if (includeDietDetails && dietDetails.trim()) {
-      details.push(`🚫งดยา-งดอาหาร🥩: \n${dietDetails}`);
+      details.push(`🚫งดยา-งดอาหาร🥩:\n${dietDetails.trim()}`);
     }
+  
     if (includeMoreDetails && moreDetails.trim()) {
-      details.push(`เพิ่มเติม: \n${moreDetails}`);
+      details.push(`เพิ่มเติม❤️:\n${moreDetails.trim()}`);
     }
-    setAppointmentDetails(details.join("\n\n"));
-    let resultDate = null;
-  if (notificationNumber && notificationUnit) {
-    const number = parseInt(notificationNumber);
-    const baseDate = new Date();
-
-    if (notificationUnit === "day") {
-      resultDate = addDays(baseDate, number);
-    } else if (notificationUnit === "week") {
-      resultDate = addWeeks(baseDate, number);
-    } else if (notificationUnit === "month") {
-      resultDate = addMonths(baseDate, number);
-    } else if (notificationUnit === "year") {
-      resultDate = addMonths(baseDate, number * 12);
+  
+    setAppointmentDetails(details.join("\n\n")); // ✅ เว้นบรรทัดสวยงาม
+  
+    if (notificationNumber && notificationUnit && !notificationDate) {
+      const number = parseInt(notificationNumber);
+      const baseDate = new Date();
+      let resultDate = null;
+  
+      if (notificationUnit === "day") resultDate = addDays(baseDate, number);
+      else if (notificationUnit === "week") resultDate = addWeeks(baseDate, number);
+      else if (notificationUnit === "month") resultDate = addMonths(baseDate, number);
+      else if (notificationUnit === "year") resultDate = addMonths(baseDate, number * 12);
+  
+      setNotificationDate(resultDate);
     }
-    setNotificationDate(resultDate);
-  }
-  if (selectedPatient?.patient_id) {
-    fetchPatientFiles(selectedPatient.patient_id);
-  }
-
   }, [
     meetDoctor,
     includeDocumentDetails,
@@ -103,9 +100,9 @@ const Upload = () => {
     moreDetails,
     notificationNumber,
     notificationUnit,
-    selectedPatient,
-    patientName,
+    notificationDate,
   ]);
+  
 
   const removeFile = (fileName) => {
     setFiles(files.filter((file) => file.name !== fileName));
@@ -116,9 +113,7 @@ const Upload = () => {
     });
   };
 
-  const resetForm = () => {
-    setPatientName("");
-    setPatients([]);
+  const resetAppointmentForm = () => {
     setSendDate(null);
     setAppointmentDate(null);
     setReminderTime(null);
@@ -135,7 +130,9 @@ const Upload = () => {
     setNotificationDetails("");
     setNotificationDuration("");
     setFiles([]);
+    setUploadStatus({});
   };
+  
   
   const handleNotificationDurationChange = (e) => {
     const duration = e.target.value;
@@ -188,6 +185,8 @@ const Upload = () => {
     }
   };
   const handleSetAppointment = async (patientId) => {
+    console.log("SUBMIT CLICKED");
+  
     if (!patientId) {
       setSnackbar({
         open: true,
@@ -196,24 +195,18 @@ const Upload = () => {
       });
       return;
     }
-
+  
     const data = {
       patient_id: patientId,
       appointment_senddate: sendDate ? format(sendDate, "yyyy-MM-dd") : null,
-      appointment_date: appointmentDate
-        ? format(appointmentDate, "yyyy-MM-dd")
-        : null,
+      appointment_date: appointmentDate ? format(appointmentDate, "yyyy-MM-dd") : null,
       reminder_time: reminderTime ? format(reminderTime, "HH:mm") : null,
       appointment_details: appointmentDetails || null,
-      notification_date: notificationDate
-        ? format(notificationDate, "yyyy-MM-dd")
-        : null,
-      notification_time: notificationTime
-        ? format(notificationTime, "HH:mm")
-        : null,
+      notification_date: notificationDate ? format(notificationDate, "yyyy-MM-dd") : null,
+      notification_time: notificationTime ? format(notificationTime, "HH:mm") : null,
       notification_details: notificationDetails || null,
     };
-
+  
     try {
       const response = await fetch("http://localhost:3001/set-appointment", {
         method: "POST",
@@ -222,22 +215,24 @@ const Upload = () => {
         },
         body: JSON.stringify(data),
       });
+  
       const result = await response.json();
-
+  
       if (result.success) {
+        // ✅ หลังส่งสำเร็จ ค่อยโชว์ success + reset form
         setSnackbar({
           open: true,
           message: "Appointment set successfully!",
           severity: "success",
         });
-        resetForm();
-
+  
+        resetAppointmentForm(); // ✅ ไม่ยุ่งกับ selectedPatient หรือผลค้นหา
+  
         if (files.length > 0) {
           await handleUploadFiles(patientId, files);
         }
-
-        handleSearchPatient();
-        setFiles([]);
+  
+        setFiles([]); // เคลียร์ไฟล์ที่เพิ่งอัปโหลด
       } else {
         setSnackbar({
           open: true,
@@ -251,10 +246,9 @@ const Upload = () => {
         message: "Error setting appointment.",
         severity: "error",
       });
-      //console.error("Error:", error);
     }
   };
-
+  
   const handleFileChange = (event) => {
     setFiles(Array.from(event.target.files));
   };
@@ -410,7 +404,11 @@ const Upload = () => {
         button 
         key={patient.patient_id} 
         selected={selectedPatient?.patient_id === patient.patient_id}
-        onClick={() => setSelectedPatient(patient)}
+        onClick={() => {
+          setSelectedPatient(patient);
+          fetchPatientFiles(patient.patient_id);
+        }}
+        
         sx={{
           backgroundColor: selectedPatient?.patient_id === patient.patient_id ? '#e0e0e0' : 'inherit',
           borderRadius: 1,

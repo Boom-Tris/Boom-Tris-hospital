@@ -45,20 +45,29 @@ const logger = winston.createLogger({
     new winston.transports.File({ filename: "logfile.log" }),
   ],
 });
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: "Too many requests, please try again later.",
-});
-app.use(limiter);
+if (process.env.NODE_ENV === "production") {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: "Too many requests, please try again later.",
+  });
+  app.use(limiter);
+}
+
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:3000"];
 
 // 🌍 CORS Configuration (จำกัด origin)
 const corsOptions = {
-  origin: process.env.CORS_ALLOWED_ORIGINS?.split(",") || "*",
+  origin: "http://localhost:3000",
   methods: ["GET", "POST", "DELETE", "PUT"],
   credentials: true,
-  allowedHeaders: "Content-Type,Authorization",
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
+
+
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -77,7 +86,6 @@ app.get("/", (req, res) => {
 
 
 app.use(cookieParser());
-
 // ดึงข้อมูลโปรไฟล์
 app.get("/getProfiled/:id", async (req, res) => {
   const { id } = req.params;
@@ -99,6 +107,53 @@ app.get("/getProfiled/:id", async (req, res) => {
   }
 });
 
+// API สำหรับอัปเดตข้อมูล Medical Personnel
+app.put("/setProfiled/:id", async (req, res) => {
+  try {
+    console.log("ข้อมูลที่ได้รับจาก frontend:", req.body);
+
+    const { username, email, name, nickname } = req.body;
+    const { id } = req.params; // รับ medicalpersonnel_id จาก URL
+
+    if (!id) {
+      return res.status(400).json({ message: "Missing medicalpersonnel_id" });
+    }
+
+    // ✅ สร้าง object อัปเดตข้อมูลเฉพาะค่าที่มี
+    const updates = {};
+    if (username) updates.username = username;
+    if (email) updates.email = email;
+    if (name) updates.name = name;
+    if (nickname) updates.nickname = nickname;
+
+    console.log("📌 ข้อมูลที่จะอัปเดท:", updates);
+
+    const { data, error } = await supabase
+      .from("medicalpersonnel") // ✅ ใช้ medicalpersonnel_id แทน username
+      .update(updates)
+      .eq("medicalpersonnel_id", id); // ✅ ค้นหาด้วย medicalpersonnel_id
+
+    if (error) {
+      console.error("❌ Supabase error:", error);
+      return res.status(500).json({
+        message: "Error updating medical personnel data",
+        error: error.message,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Medical personnel data updated successfully",
+      data,
+    });
+  } catch (err) {
+    console.error("❌ Server error:", err);
+    return res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
+  }
+});
+
 // Login สำหรับ Admin และ Medical Personnel
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -116,25 +171,24 @@ app.post("/login", async (req, res) => {
         .select("*")
         .eq("username", cleanUsername)
         .single();
-
+        
       if (!error && user) {
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
-          // ✅ สร้าง JWT Token
+          // สร้าง JWT Token
           const token = jwt.sign(
             { username: user.username, role: table },
             process.env.JWT_SECRET,
             { expiresIn: "2h" }
           );
 
-          // ✅ ตั้งค่า cookie เป็น HTTP-only
+          // ตั้งค่า cookie เป็น HTTP-only
           res.cookie("token", token, {
-            httpOnly: true, 
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 2 * 60 * 60 * 1000, 
+            httpOnly: true, // ป้องกันการเข้าถึงจาก JavaScript
+            secure: process.env.NODE_ENV === "production", // ใช้ HTTPS ใน production
+            maxAge: 2 * 60 * 60 * 1000, // ใช้เวลา 2 ชั่วโมง
           });
 
-          // ✅ เตรียมข้อมูล user ที่จะส่งกลับ
           let userData = {
             username: user.username,
             role: table
@@ -824,7 +878,7 @@ async function sendNotification(patient, type) {
     console.log(`⏰ ถึงเวลาส่งแจ้งเตือนให้ ${patient.name} แล้ว`);
     let message = "";
     if (type === "Appointment") {
-      message = `แจ้งเตือน: คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
+      message = `แจ้งเตือน:\n คุณ ${patient.name} มีนัดหมายในวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
     } else if (type === "Scheduled") {
       message = `แจ้งเตือนตามระยะเวลาถึงคุณ ${patient.name}\nรายละเอียด:\n${notification_details}`;
     } else if (type === "SendDate") {
