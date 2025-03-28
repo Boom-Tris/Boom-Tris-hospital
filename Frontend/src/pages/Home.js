@@ -122,7 +122,7 @@ const Home = () => {
   };
 
   const data = {
-    labels: ["จำนวนผู้ป่วยทั้งหมด", "จำนวนหมอ", "ผู้ป่วยได้รับใบนัด", ], // Updated labels
+    labels: ["จำนวนผู้ป่วยทั้งหมด", "บุคลากรทางการแพทย์", "ผู้ป่วยได้รับใบนัด", ], // Updated labels
     datasets: [
       {
         data: [patientCount, doctorCount, appointmentCount], // Use dynamic counts
