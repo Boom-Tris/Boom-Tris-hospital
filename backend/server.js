@@ -74,35 +74,7 @@ app.get("/", (req, res) => {
   res.json({ message: "Server is online" });
 });
 
-//ดึงข้อมูลโปรไฟล์
-app.get("/getProfile", async (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "Unauthorized" });
 
-    // ตรวจสอบ JWT Token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded.username)
-      return res.status(403).json({ message: "Invalid token" });
-
-    // sanitize input
-    const username = sanitizeInput(req.query.username);
-
-    // ตรวจสอบและดึงข้อมูลจาก Supabase
-    const { data, error } = await supabase
-      .from("medicalpersonnel")
-      .select("*")
-      .eq("username", username) // ใช้ username ที่ sanitize แล้ว
-      .single();
-
-    if (error)
-      return res.status(500).json({ message: "Error fetching profile" });
-
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-});
 
 app.use(cookieParser());
 

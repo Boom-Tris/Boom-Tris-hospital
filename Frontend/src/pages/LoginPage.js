@@ -63,7 +63,7 @@
   
         <Grid item xs={12} md={7} className="right-section">
           <Typography variant="h2" className="login-title">
-            เข้าสู่ระบบ
+            Login
             <Box sx={{ borderBottom: "2px solid #000", marginTop: 3 }}></Box>
           </Typography>
   
@@ -71,7 +71,7 @@
             <form onSubmit={handleLogin}>
               <TextField
                 fullWidth
-                label="ชื่อผู้ใช้"
+                label="username"
                 variant="outlined"
                 margin="normal"
                 value={username}
@@ -80,7 +80,7 @@
               />
               <TextField
                 fullWidth
-                label="รหัสผ่าน"
+                label="password"
                 type="password"
                 variant="outlined"
                 margin="normal"
@@ -90,7 +90,7 @@
               />
               <FormControlLabel
                 control={<Checkbox checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />}
-                label="จำข้อมูล"
+                label="Remember me"
                 className="checkbox"
               />
        {error && (
@@ -104,7 +104,7 @@
   className="sign-in-button"
   type="submit"
 >
-  เข้าสู่ระบบ
+Login
 </Button>
 
             </form>
