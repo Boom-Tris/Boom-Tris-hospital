@@ -165,7 +165,7 @@ const Home = () => {
           <div id="TextTyp">{appointmentCount}</div>
         </Box>
         <Box className="custom-stat-card">
-          <Typography variant="h6">จำนวนหมอ</Typography>
+          <Typography variant="h6">บุคลากรทางการแพทย์</Typography>
           <div id="TextTyp">{doctorCount}</div>
         </Box>
       </Box>
