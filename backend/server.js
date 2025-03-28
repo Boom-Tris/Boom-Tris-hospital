@@ -32,7 +32,10 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
-
+app.use(express.static(path.join(__dirname, '../Frontend/build')));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/build/index.html'));
+});
 
 app.use(helmet());
 app.set("trust proxy", 1); // เปิดใช้งาน trust proxy
