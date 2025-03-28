@@ -113,6 +113,75 @@ app.get("/getProfile", async (req, res) => {
   }
 });
 
+app.use(cookieParser());
+// ดึงข้อมูลโปรไฟล์
+app.get("/getProfiled/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from("medicalpersonnel")
+      .select("*")
+      .eq("medicalpersonnel_id", id)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: "Internal Server Error", error: err.message });
+  }
+});
+
+// API สำหรับอัปเดตข้อมูล Medical Personnel
+app.put("/setProfiled/:id", async (req, res) => {
+  try {
+    console.log("ข้อมูลที่ได้รับจาก frontend:", req.body);
+
+    const { username, email, name, nickname } = req.body;
+    const { id } = req.params; // รับ medicalpersonnel_id จาก URL
+
+    if (!id) {
+      return res.status(400).json({ message: "Missing medicalpersonnel_id" });
+    }
+
+    // ✅ สร้าง object อัปเดตข้อมูลเฉพาะค่าที่มี
+    const updates = {};
+    if (username) updates.username = username;
+    if (email) updates.email = email;
+    if (name) updates.name = name;
+    if (nickname) updates.nickname = nickname;
+
+    console.log("📌 ข้อมูลที่จะอัปเดท:", updates);
+
+    const { data, error } = await supabase
+      .from("medicalpersonnel") // ✅ ใช้ medicalpersonnel_id แทน username
+      .update(updates)
+      .eq("medicalpersonnel_id", id); // ✅ ค้นหาด้วย medicalpersonnel_id
+
+    if (error) {
+      console.error("❌ Supabase error:", error);
+      return res.status(500).json({
+        message: "Error updating medical personnel data",
+        error: error.message,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Medical personnel data updated successfully",
+      data,
+    });
+  } catch (err) {
+    console.error("❌ Server error:", err);
+    return res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
+  }
+});
+
 // Login สำหรับ Admin และ Medical Personnel
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -130,11 +199,11 @@ app.post("/login", async (req, res) => {
         .select("*")
         .eq("username", cleanUsername)
         .single();
+        
       if (!error && user) {
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
           // สร้าง JWT Token
-      
           const token = jwt.sign(
             { username: user.username, role: table },
             process.env.JWT_SECRET,
@@ -148,9 +217,20 @@ app.post("/login", async (req, res) => {
             maxAge: 2 * 60 * 60 * 1000, // ใช้เวลา 2 ชั่วโมง
           });
 
+          let userData = {
+            username: user.username,
+            role: table
+          };
+
+          // ✅ ถ้าเป็น medicalpersonnel ให้เพิ่ม medicalpersonnel_id
+          if (table === "medicalpersonnel") {
+            userData.medicalpersonnel_id = user.medicalpersonnel_id; 
+          }
+
           return res.json({
             message: "Login Success",
-            user: { username: user.username, role: table },
+            user: userData,
+            token: token, // ✅ ส่ง token กลับมาด้วย
           });
         } else {
           return res.status(401).json({ message: "Invalid password" });

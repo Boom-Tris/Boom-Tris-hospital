@@ -31,10 +31,6 @@
       
       // เก็บ token ใน sessionStorage
         sessionStorage.setItem("token", response.data.token);
-
-
-          
-
         
           setTimeout(() => {
             navigate("/home"); // เพิ่มดีเลย์เล็กน้อยเพื่อให้ React อัปเดต UI
