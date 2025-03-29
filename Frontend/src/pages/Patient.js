@@ -7,6 +7,7 @@ import {  faCog, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import '../components/Table.css';
+import { mt } from 'date-fns/locale';
 
 
 
@@ -16,18 +17,13 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
-
-
-
-
-
 const Patient = () => {
 
   const [openConfirmGroupDelete, setOpenConfirmGroupDelete] = useState(false);
   const [openConfirmDeleteInEdit, setOpenConfirmDeleteInEdit] = useState(false);
   const [patientsToDelete, setPatientsToDelete] = useState([]);
   const [rows, setRows] = useState([]); 
-
+  const [yearType, setYearType] = useState("AD");
   const handleRowSelection = (newSelection) => {
     setSelectedIds(newSelection);
   };
@@ -203,14 +199,19 @@ const handleGroupMenuClose = () => {
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch('http://localhost:3001/all-patients');
+      const response = await fetch('http://localhost:3001/all-patients-with-age');
       const data = await response.json();
   
       if (response.ok) {
         const updatedRows = data.map(patient => ({
           ...patient,
           id: patient.patient_id,
-          appointment_date: patient.appointment_date ? new Date(patient.appointment_date) : null, // แปลงเป็น Date object
+          appointment_date: patient.appointment_date ? new Date(patient.appointment_date) : null,
+          birthdate: patient.birthdate || "",
+          birthYear: patient.birthdate ? new Date(patient.birthdate).getFullYear().toString() : "",
+
+          age: patient.age || "", 
+
         }));
         setRows(updatedRows);
       } else {
@@ -235,9 +236,17 @@ const handleGroupMenuClose = () => {
   
   const handleEditRow = (patient) => {
     setSelectedPatient(patient);
+  
+    const year = patient.birthdate ? new Date(patient.birthdate).getFullYear() : null;
+    if (year && year < 2500) {
+      setYearType("AD");
+    } else {
+      setYearType("BE");
+    }
+  
     setOpenEditDialog(true);
   };
-
+  
   const handleViewRow = (patient) => {
     setSelectedViewPatient(patient);  // ตั้งค่า selectedViewPatient ให้เป็นผู้ป่วยที่เลือก
     setOpenViewDialog(true);  // เปิด Dialog เพื่อแสดงข้อมูล
@@ -260,7 +269,7 @@ const handleGroupMenuClose = () => {
     const payload = {
       lineUserId: selectedPatient.lineUserId || selectedPatient.lineid || "",
       name: selectedPatient.name,
-      age: parseInt(selectedPatient.age, 10) || null,
+      birthdate: selectedPatient.birthdate || null,
       email: selectedPatient.email,
       tel: selectedPatient.tel,
       allergic: selectedPatient.allergic,
@@ -436,13 +445,60 @@ const handleGroupMenuClose = () => {
         fullWidth 
       />
 
-      <TextField 
-        label="อายุ" 
-        value={selectedPatient?.age || ''} 
-        onChange={(e) => setSelectedPatient({ ...selectedPatient, age: e.target.value.replace(/\D/g, '') })} 
-        variant="outlined"
-        fullWidth 
-      />
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+      <RadioGroup
+          value={yearType}
+          onChange={(e) => {
+            const newType = e.target.value;
+            setYearType(newType);
+
+            if (selectedPatient?.birthYear) {
+              const year = parseInt(selectedPatient.birthYear);
+              const adYear = newType === 'BE' ? year - 543 : year;
+
+              setSelectedPatient({
+                ...selectedPatient,
+                birthdate: `${adYear}-01-01`
+              });
+            }
+          }} 
+          sx={{
+            gap: -9, 
+            mt: -2,
+            '& .MuiFormControlLabel-root': {
+              mb: -0.5, 
+            },
+            '& .MuiFormControlLabel-label': {
+              marginLeft: -1,
+            }
+          }}
+        >
+          <FormControlLabel value="AD" control={<Radio />} label="ค.ศ." />
+          <FormControlLabel value="BE" control={<Radio />} label="พ.ศ." />
+        </RadioGroup>
+
+        <TextField
+          label="ปีเกิด"
+          value={selectedPatient?.birthYear || ''}
+          onChange={(e) => {
+            const rawYear = e.target.value.replace(/\D/g, '');
+            if (rawYear.length <= 4) {
+              const adYear = yearType === 'BE' ? parseInt(rawYear) - 543 : parseInt(rawYear);
+              setSelectedPatient({
+                ...selectedPatient,
+                birthYear: rawYear,
+                birthdate: rawYear ? `${adYear}-01-01` : '',
+              });
+            }
+          }}
+
+          fullWidth
+          InputLabelProps={{ shrink: true }}
+          sx={{ mt: 0.2 }}
+        />
+      </Box>
+
+
 
       <TextField 
         label="อาการแพ้" 

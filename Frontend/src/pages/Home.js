@@ -95,7 +95,7 @@ const Home = () => {
 
     const fetchPatients = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/all-patients");
+        const response = await axios.get("http://localhost:3001/all-patients-with-age"); // ✅ ใช้ View ที่มี age
         if (response.status === 200) {
           const updatedRows = response.data.map((patient) => ({
             ...patient,
@@ -108,6 +108,7 @@ const Home = () => {
         console.error("Error fetching patients:", err);
       }
     };
+    
 
     fetchCounts();
     fetchPatients();

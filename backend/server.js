@@ -277,21 +277,20 @@ app.post("/medical-personnel", async (req, res) => {
   }
 });
 
-app.get("/all-patients", async (req, res) => {
+app.get("/all-patients-with-age", async (req, res) => {
   try {
-    // ดึงข้อมูลผู้ป่วยทั้งหมดจากตาราง patient
-    const { data, error } = await supabase.from("patient").select("*");
+    const { data, error } = await supabase.from("patient_with_age").select("*");
 
     if (error) {
-      return res.status(500).send(error.message);
+      return res.status(500).json({ message: "Supabase error", error: error.message });
     }
 
-    // ส่งข้อมูลผู้ป่วยทั้งหมดกลับไป
     res.status(200).json(data);
   } catch (err) {
-    res.status(500).send(err.message);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 });
+
 
 app.get("/all-patients-count", async (req, res) => {
   try {
@@ -336,16 +335,16 @@ app.put("/update-patient", async (req, res) => {
     // เพิ่ม console.log เพื่อดูข้อมูลที่ได้รับ
     console.log("ข้อมูลที่ได้รับจาก frontend:", req.body);
 
-    const {
-      lineUserId,
-      name,
-      email,
-      tel,
-      address,
-      sickness,
-      age,
-      allergic,
-      appointment_date,
+    const { 
+      lineUserId, 
+      name, 
+      email, 
+      tel, 
+      address, 
+      sickness, 
+      birthdate, 
+      allergic, 
+      appointment_date 
     } = req.body;
 
     if (!lineUserId) {
@@ -358,7 +357,7 @@ app.put("/update-patient", async (req, res) => {
     if (tel) updates.tel = tel;
     if (address) updates.address = address;
     if (sickness) updates.sickness = sickness;
-    if (age) updates.age = age;
+    if (birthdate) updates.birthdate =birthdate;
     if (allergic) updates.allergic = allergic;
     if (appointment_date !== undefined)
       updates.appointment_date = appointment_date;
@@ -391,7 +390,7 @@ app.post("/add-patient", async (req, res) => {
   try {
     const {
       name,
-      age,
+      birthdate,
       lineid,
       allergic,
       sickness,
@@ -616,7 +615,7 @@ app.get("/search-patient", async (req, res) => {
 
   try {
     const { data, error } = await supabase
-      .from("patient")
+      .from("patient_with_age")
       .select("*")
       .ilike("name", `%${name}%`); // ค้นหาชื่อผู้ป่วยแบบไม่คำนึงถึงตัวพิมพ์ใหญ่
 
