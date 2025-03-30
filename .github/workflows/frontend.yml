@@ -26,4 +26,4 @@ jobs:
           context: ./Frontend
           file: ./Frontend/Dockerfile
           push: true
-          tags: Boom-Tris/boom-tris-hospital-frontend:latest
+          tags: boom-tris/boom-tris-hospital-frontend:latest
