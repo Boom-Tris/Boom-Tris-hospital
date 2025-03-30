@@ -24,6 +24,6 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./frontend
-          file: ./frontend/Dockerfile
+          file: ./frontend/dockerfile
           push: true
           tags: Boom-Tris/boom-tris-hospital-frontend:latest
