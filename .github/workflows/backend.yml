@@ -47,4 +47,4 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: Boom-Tris/Boom-Tris-hospital-backend:latest
+          tags: boom-tris/boom-Tris-hospital-backend:latest
