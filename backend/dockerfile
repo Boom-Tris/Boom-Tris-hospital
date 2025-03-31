@@ -1,23 +1,11 @@
-# ใช้ Windows-based Node image
-FROM mcr.microsoft.com/windows/servercore:ltsc2022
+FROM node:18-alpine
 
-# ตั้งค่า working directory
 WORKDIR /app
 
-# ดาวน์โหลดและติดตั้ง Node.js และ npm
-RUN powershell -Command \
-    Invoke-WebRequest -Uri https://nodejs.org/dist/v18.18.0/node-v18.18.0-x64.msi -OutFile nodejs.msi; \
-    Start-Process msiexec.exe -ArgumentList '/i', 'nodejs.msi', '/quiet', '/norestart' -NoNewWindow -Wait; \
-    Remove-Item -Force nodejs.msi
-
-# คัดลอกไฟล์ทั้งหมดไปยัง container
 COPY . . 
+COPY .env .env
 
-# ติดตั้ง dependencies
 RUN npm install
-
-# เปิดพอร์ต 3000
 EXPOSE 3001
 
-# รันแอปพลิเคชัน
 CMD ["npm", "start"]
