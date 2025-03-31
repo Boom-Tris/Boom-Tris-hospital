@@ -756,7 +756,7 @@ async function sendLineAppointment(
 }
 
 const cron = require("node-cron");
-const dayjs = require("dayjs");
+
 
 const notifiedJobs = new Set(); // ป้องกันการส่งซ้ำ
 
