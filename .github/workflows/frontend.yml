@@ -24,4 +24,4 @@ jobs:
 
       - name: Build and push Docker Image
         run: |
-          docker build -t boomtris/boom-tris-hospital-frontend:latest -f Frontend/Dockerfile Front
+          docker build -t boomtris/boom-tris-hospital-frontend:latest -f Frontend/Dockerfile ./Frontend
