@@ -1,11 +1,18 @@
-FROM node:18-alpine
+# ใช้ Windows-based Node image
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
+# ตั้งค่า working directory
 WORKDIR /app
 
+# คัดลอกไฟล์ทั้งหมดไปยัง container
 COPY . . 
 COPY .env .env
 
-RUN npm install
+# ติดตั้ง dependencies
+RUN powershell -Command npm install
+
+# เปิดพอร์ต 3001
 EXPOSE 3001
 
+# รันแอปพลิเคชัน
 CMD ["npm", "start"]
