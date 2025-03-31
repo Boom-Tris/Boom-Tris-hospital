@@ -707,9 +707,8 @@ app.post("/set-appointment", async (req, res) => {
   }
 });
 
-const axios = require("axios");
 const cron = require("node-cron");
-const dayjs = require("dayjs");
+
 
 const notificationJobs = new Map(); // Map สำหรับเก็บ cron jobs
 
