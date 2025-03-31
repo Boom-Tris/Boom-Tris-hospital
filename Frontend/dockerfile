@@ -1,10 +1,16 @@
 FROM node:18-alpine
 
+# ตั้งค่า Timezone
+RUN apk add --no-cache tzdata
+
+# ตั้งค่า Timezone เป็น Asia/Bangkok
+RUN cp /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && echo "Asia/Bangkok" > /etc/timezone
+
+# ติดตั้ง dependencies
 WORKDIR /app
-
-COPY . . 
-
+COPY . .
 RUN npm install
+
 EXPOSE 3000
 
 CMD ["npm", "start"]
