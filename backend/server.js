@@ -758,71 +758,129 @@ async function sendLineAppointment(
 const cron = require("node-cron");
 
 
-const notifiedJobs = new Set(); // ป้องกันการส่งซ้ำ
+const notificationJobs = new Map(); // เก็บ cron jobs
 
-cron.schedule("* * * * *", async () => {
-  console.log("🕐 ตรวจสอบแจ้งเตือนทุก 1 นาที");
+async function sendNotification(patient, type) {
+  const {
+    patient_id,
+    name,
+    lineid,
+    reminder_time,
+    appointment_date,
+    appointment_details,
+    notification_details,
+    notification_time,
+    notification_date,
+    appointment_senddate,
+  } = patient;
 
-  const now = dayjs();
+  let targetDateTime = null;
 
-  // ดึงข้อมูลผู้ป่วยที่ต้องส่งแจ้งเตือนวันนี้
-  const { data: patients } = await supabase
-    .from("patient_with_appointment")
-    .select("*"); // หรือ where เฉพาะคนที่มี lineid, reminder_time, etc.
+  const today = dayjs().format("YYYY-MM-DD");
+  const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
 
-  for (const patient of patients) {
-    const {
-      patient_id,
-      name,
-      lineid,
-      appointment_date,
-      reminder_time,
-      appointment_senddate,
-      notification_date,
-      notification_time,
-    } = patient;
-
-    // ===== เช็คว่าเวลาตรงกับเวลานัดหมายหรือไม่ =====
-    const nowTime = now.format("HH:mm");
-    const nowDate = now.format("YYYY-MM-DD");
-
-    // กำหนดเวลาส่งจากประเภทต่างๆ
-    const shouldSendAppointment =
-      (appointment_date === nowDate || appointment_senddate === nowDate) &&
-      reminder_time?.startsWith(nowTime);
-
-    const shouldSendScheduled =
-      notification_date === nowDate &&
-      notification_time?.startsWith(nowTime);
-
-    // ตรวจสอบว่าควรส่ง และยังไม่เคยส่ง
-    if ((shouldSendAppointment || shouldSendScheduled) && !notifiedJobs.has(patient_id + nowTime)) {
-      console.log(`📨 เตรียมส่งแจ้งเตือนให้ ${name}`);
-
-      let message = "";
-      if (shouldSendAppointment) {
-        message = `📅 แจ้งเตือน:\nคุณ ${name} มีนัดวันที่ ${appointment_date}\n📄 รายละเอียด:\n${patient.appointment_details}`;
-      } else if (shouldSendScheduled) {
-        message = `📌 แจ้งเตือนตามกำหนดเวลา:\nคุณ ${name}\n📄 รายละเอียด:\n${patient.notification_details}`;
+  if (type === "Appointment") {
+    if (appointment_date === today || appointment_date === tomorrow) {
+      const [hours, minutes, seconds] = reminder_time.split(":");
+      const baseDate = appointment_date === tomorrow ? today : appointment_date;
+      targetDateTime = dayjs(`${baseDate} ${hours}:${minutes}:${seconds}`);
+    }
+  } else if (type === "SendDate") {
+    if (appointment_senddate === today) {
+      const [hours, minutes, seconds] = reminder_time.split(":");
+      targetDateTime = dayjs(`${today} ${hours}:${minutes}:${seconds}`);
+    }
+  } else if (type === "Scheduled") {
+    if (dayjs(today).isBefore(dayjs(notification_date).add(1, "day"))) {
+      const [hours, minutes, seconds] = notification_time.split(":");
+      let tempDate = dayjs(`${today} ${hours}:${minutes}:${seconds}`);
+      if (tempDate.isBefore(dayjs())) {
+        tempDate = tempDate.add(1, "day");
       }
+      targetDateTime = tempDate;
+    }
+  }
 
-      // แนบไฟล์ (เลือกใส่เหมือนเดิม)
-      const fileUrls = [];
-      const fileTypes = [];
+  if (!targetDateTime) {
+    console.log(`❌ ไม่สามารถตั้งเวลาแจ้งเตือนให้ ${name} ได้`);
+    return;
+  }
 
-      // ส่ง LINE
-      try {
-        await sendLineAppointment(lineid, message, fileUrls, fileTypes);
-        console.log(`✅ ส่งแจ้งเตือนให้ ${name} แล้ว`);
+  const delay = targetDateTime.diff(dayjs());
+  if (delay <= 0) {
+    console.log(`❌ เวลาที่ตั้งไว้ผ่านไปแล้วสำหรับ ${name}`);
+    return;
+  }
 
-        // ป้องกันการส่งซ้ำ
-        notifiedJobs.add(patient_id + nowTime);
-      } catch (err) {
-        console.error(`❌ ส่งไลน์ล้มเหลวให้ ${name}:`, err.message);
+  const cronTime = `${targetDateTime.second()} ${targetDateTime.minute()} ${targetDateTime.hour()} ${targetDateTime.date()} ${targetDateTime.month() + 1} *`;
+  console.log(`⏳ ตั้ง cron แจ้งเตือน ${type} ให้ ${name} ที่เวลา ${cronTime}`);
+
+  // เคลียร์ cron job เก่า ถ้ามี
+  if (notificationJobs.has(patient_id)) {
+    const oldJob = notificationJobs.get(patient_id);
+    oldJob.stop();
+    notificationJobs.delete(patient_id);
+    console.log(`🚫 ยกเลิก cron เก่าของ ${name}`);
+  }
+
+  // ดึงไฟล์จาก upload_logs ถ้าจำเป็น
+  let fileUrls = [];
+  let fileTypes = [];
+
+  if (type === "Appointment" || type === "SendDate") {
+    const { data: uploadData } = await supabase
+      .from("upload_logs")
+      .select("file_path, file_name")
+      .eq("patient_id", patient_id)
+      .order("uploaded_at", { ascending: false });
+
+    if (uploadData?.length) {
+      for (const file of uploadData) {
+        let filePath = file.file_path;
+        if (!filePath.startsWith("dataupload/")) {
+          filePath = `dataupload/${filePath}`;
+        }
+        const { data: publicUrlData } = supabase.storage
+          .from("dataupload")
+          .getPublicUrl(filePath);
+
+        if (publicUrlData) {
+          const fileUrl = publicUrlData.publicUrl;
+          const fileType = filePath.split(".").pop().toLowerCase();
+
+          try {
+            const response = await fetch(fileUrl, { method: "HEAD" });
+            if (response.ok) {
+              fileUrls.push(fileUrl);
+              fileTypes.push(fileType);
+            } else {
+              console.log("❌ ไฟล์ไม่สามารถเข้าถึงได้:", fileUrl);
+            }
+          } catch (error) {
+            console.error("❌ ตรวจสอบไฟล์ผิดพลาด:", error.message);
+          }
+        }
       }
     }
   }
-});
+
+  // ตั้ง cron job
+  const job = cron.schedule(cronTime, async () => {
+    console.log(`⏰ ถึงเวลาส่งแจ้งเตือนให้ ${name}`);
+    let message = "";
+    if (type === "Appointment" || type === "SendDate") {
+      message = `แจ้งเตือน:\nคุณ ${name} มีนัดหมายวันที่ ${appointment_date}\nรายละเอียด:\n${appointment_details}`;
+    } else if (type === "Scheduled") {
+      message = `แจ้งเตือนตามกำหนดเวลา\nคุณ ${name}\nรายละเอียด:\n${notification_details}`;
+    }
+
+    await sendLineAppointment(lineid, message, fileUrls, fileTypes);
+    job.stop(); // หยุด job หลังทำงานแล้ว (กรณีเป็น one-time)
+    notificationJobs.delete(patient_id);
+  });
+
+  notificationJobs.set(patient_id, job);
+}
 
 
 // ฟังก์ชันคัดกรองผู้ป่วยสำหรับการแจ้งเตือน Appointment
